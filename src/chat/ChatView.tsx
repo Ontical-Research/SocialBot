@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { connect, publish, disconnect, onMessage } from "../nats/client";
+import { connect, publish, disconnect } from "../nats/client";
 import type { NatsMessage } from "../nats/client";
 import { senderColor } from "./senderColor";
 
@@ -40,8 +40,7 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
   }, []);
 
   useEffect(() => {
-    onMessage(appendMessage);
-    void connect(natsUrl, topic, name);
+    void connect(natsUrl, topic, name, appendMessage);
     return () => {
       void disconnect();
     };
