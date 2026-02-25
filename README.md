@@ -50,6 +50,29 @@ npm install
 npm run dev
 ```
 
+## Chatting as Alice and Bob
+
+With the NATS broker and dev server both running, open two browser tabs:
+
+**Tab 1 — Alice**
+
+```
+http://localhost:5173
+```
+
+Enter **Name:** `Alice`, **Topic:** `chat`, then click **Connect**.
+
+**Tab 2 — Bob**
+
+```
+http://localhost:5173
+```
+
+Enter **Name:** `Bob`, **Topic:** `chat`, then click **Connect**.
+
+Messages sent in either tab appear instantly in both. Any name and topic can
+be used; participants on the same topic see each other's messages.
+
 ## Running Tests
 
 ```bash
