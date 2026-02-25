@@ -8,7 +8,7 @@ function App() {
   const [connection, setConnection] = useState<HistoryEntry | null>(null);
 
   if (connection) {
-    return <ChatView name={connection.name} topic={connection.topic} />;
+    return <ChatView name={connection.name} topic={connection.topic} natsUrl={connection.natsUrl} />;
   }
 
   return <SettingsPanel onConnect={setConnection} />;

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 
-const mockConfig = { name: "Alice", topic: "chat.room1" };
+const mockConfig = { name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" };
 
 describe("App", () => {
   beforeEach(() => {
