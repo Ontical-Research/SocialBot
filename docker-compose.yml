@@ -1,0 +1,12 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: socialbot-nats
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    ports:
+      - "4222:4222" # TCP/NATS
+      - "8222:8222" # HTTP monitor
+      - "9222:9222" # WebSocket
+    volumes:
+      - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+    restart: unless-stopped
