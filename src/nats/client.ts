@@ -27,6 +27,15 @@ let currentTopic: string = "";
 let currentName: string = "";
 let subscriptions: Subscription[] = [];
 
+/**
+ * Each ``connect()`` call stamps a new unique Symbol as the "current
+ * generation".  ``drainSubscription()`` loops capture their generation at
+ * start-up and bail out if it no longer matches – this prevents stale loops
+ * left over from a previous connection from delivering messages after a
+ * reconnect (the React StrictMode double-mount scenario).
+ */
+let currentGeneration: symbol = Symbol();
+
 const sc = StringCodec();
 
 // ---------------------------------------------------------------------------
@@ -59,6 +68,11 @@ export async function connect(
   // Clean up any existing connection first
   await disconnect();
 
+  // Stamp a new generation *after* disconnect() so the old loops see a stale
+  // generation and exit before we start delivering to the new callback.
+  const generation = Symbol();
+  currentGeneration = generation;
+
   nc = await natsConnect({ servers: url });
   currentTopic = topic;
   currentName = name;
@@ -69,7 +83,7 @@ export async function connect(
 
   // Drain each subscription asynchronously, forwarding messages to the callback
   for (const sub of subscriptions) {
-    void drainSubscription(sub, onMessage);
+    void drainSubscription(sub, onMessage, generation);
   }
 }
 
@@ -102,6 +116,10 @@ export function publish(text: string): void {
 export async function disconnect(): Promise<void> {
   if (!nc) return;
 
+  // Invalidate all active drainSubscription loops so they stop calling
+  // onMessage after this point, even if they haven't yielded yet.
+  currentGeneration = Symbol();
+
   const conn = nc;
   nc = null;
   subscriptions = [];
@@ -120,11 +138,22 @@ export async function disconnect(): Promise<void> {
  * provided callback.  Parse errors are silently ignored so that malformed
  * messages cannot crash the client.
  *
- * :param sub:       The ``Subscription`` to iterate.
- * :param onMessage: Callback to invoke for each decoded ``NatsMessage``.
+ * The ``generation`` parameter guards against the React StrictMode
+ * double-mount scenario: if ``disconnect()`` or a new ``connect()`` has been
+ * called since this loop started, ``currentGeneration`` will no longer match
+ * and the loop exits without invoking the (now-stale) callback.
+ *
+ * :param sub:        The ``Subscription`` to iterate.
+ * :param onMessage:  Callback to invoke for each decoded ``NatsMessage``.
+ * :param generation: The generation symbol captured at connect time.
  */
-async function drainSubscription(sub: Subscription, onMessage: MessageCallback): Promise<void> {
+async function drainSubscription(
+  sub: Subscription,
+  onMessage: MessageCallback,
+  generation: symbol,
+): Promise<void> {
   for await (const msg of sub) {
+    if (currentGeneration !== generation) break; // stale loop — stop
     try {
       const parsed = JSON.parse(msg.string()) as NatsMessage;
       onMessage(parsed);
