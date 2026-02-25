@@ -54,8 +54,7 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
   function handleSend() {
     const trimmed = text.trim();
     if (!trimmed) return;
-    // Optimistic: add to local state immediately
-    appendMessage({ sender: name, text: trimmed, timestamp: new Date().toISOString() });
+    // Let the NATS echo be the single source of truth — avoids duplicate messages.
     publish(trimmed);
     setText("");
   }
