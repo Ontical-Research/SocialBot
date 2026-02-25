@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SettingsPanel from "./SettingsPanel";
 
-const mockConfig = { name: "Alice", topic: "chat.room1" };
+const mockConfig = { name: "Alice", topic: "chat.room1", natsUrl: "ws://custom:9222" };
 
 function makeFetchMock(config = mockConfig) {
   return vi.fn().mockResolvedValue({
@@ -50,7 +50,7 @@ describe("SettingsPanel", () => {
     });
   });
 
-  it("calls onConnect with current name and topic when Connect is clicked", async () => {
+  it("calls onConnect with current name, topic, and natsUrl when Connect is clicked", async () => {
     const onConnect = vi.fn();
     const user = userEvent.setup();
 
@@ -64,7 +64,11 @@ describe("SettingsPanel", () => {
 
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
-    expect(onConnect).toHaveBeenCalledWith({ name: "Alice", topic: "chat.room1" });
+    expect(onConnect).toHaveBeenCalledWith({
+      name: "Alice",
+      topic: "chat.room1",
+      natsUrl: "ws://custom:9222",
+    });
   });
 
   it("allows changing name before connecting", async () => {
@@ -79,10 +83,14 @@ describe("SettingsPanel", () => {
 
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
-    expect(onConnect).toHaveBeenCalledWith({ name: "Bob", topic: "chat.room1" });
+    expect(onConnect).toHaveBeenCalledWith({
+      name: "Bob",
+      topic: "chat.room1",
+      natsUrl: "ws://custom:9222",
+    });
   });
 
-  it("saves name+topic to localStorage history on connect", async () => {
+  it("saves name+topic+natsUrl to localStorage history on connect", async () => {
     const user = userEvent.setup();
 
     render(<SettingsPanel onConnect={() => {}} />);
@@ -95,15 +103,15 @@ describe("SettingsPanel", () => {
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
     const stored = JSON.parse(localStorage.getItem("socialbot:history") ?? "[]");
-    expect(stored).toEqual([{ name: "Alice", topic: "chat.room1" }]);
+    expect(stored).toEqual([{ name: "Alice", topic: "chat.room1", natsUrl: "ws://custom:9222" }]);
   });
 
   it("shows history options from localStorage in the name datalist", async () => {
     localStorage.setItem(
       "socialbot:history",
       JSON.stringify([
-        { name: "Bob", topic: "chat.room2" },
-        { name: "Alice", topic: "chat.room1" },
+        { name: "Bob", topic: "chat.room2", natsUrl: "ws://localhost:9222" },
+        { name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" },
       ]),
     );
 
@@ -114,6 +122,27 @@ describe("SettingsPanel", () => {
       const values = Array.from(options).map((o) => o.getAttribute("value"));
       expect(values).toContain("Bob");
       expect(values).toContain("Alice");
+    });
+  });
+
+  it("falls back to ws://localhost:9222 when config.json omits natsUrl", async () => {
+    vi.stubGlobal("fetch", makeFetchMock({ name: "Alice", topic: "chat.room1" } as typeof mockConfig));
+    const onConnect = vi.fn();
+    const user = userEvent.setup();
+
+    render(<SettingsPanel onConnect={onConnect} />);
+
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement;
+      expect(nameInput.value).toBe("Alice");
+    });
+
+    await user.click(screen.getByRole("button", { name: /connect/i }));
+
+    expect(onConnect).toHaveBeenCalledWith({
+      name: "Alice",
+      topic: "chat.room1",
+      natsUrl: "ws://localhost:9222",
     });
   });
 });

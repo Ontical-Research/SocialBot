@@ -2,27 +2,29 @@ import { useState, useEffect } from "react";
 import { useSettingsHistory, type HistoryEntry } from "./useSettingsHistory";
 
 interface SettingsPanelProps {
-  /** Called when the user clicks "Connect" with the chosen name and topic. */
+  /** Called when the user clicks "Connect" with the chosen name, topic, and natsUrl. */
   onConnect: (entry: HistoryEntry) => void;
 }
 
 /**
  * Settings panel displayed on startup. Fetches ``/config.json`` to get default
- * name and topic, shows combobox inputs populated from localStorage history, and
- * calls ``onConnect`` when the user submits the form.
+ * name, topic, and natsUrl, shows combobox inputs populated from localStorage history,
+ * and calls ``onConnect`` when the user submits the form.
  */
 function SettingsPanel({ onConnect }: SettingsPanelProps) {
   const { history, addEntry } = useSettingsHistory();
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
+  const [natsUrl, setNatsUrl] = useState("ws://localhost:9222");
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/config.json")
       .then((res) => res.json())
-      .then((config: { name?: string; topic?: string }) => {
+      .then((config: { name?: string; topic?: string; natsUrl?: string }) => {
         setName(config.name ?? "");
         setTopic(config.topic ?? "");
+        setNatsUrl(config.natsUrl ?? "ws://localhost:9222");
         setLoaded(true);
       })
       .catch(() => {
@@ -32,7 +34,7 @@ function SettingsPanel({ onConnect }: SettingsPanelProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const entry: HistoryEntry = { name, topic };
+    const entry: HistoryEntry = { name, topic, natsUrl };
     addEntry(entry);
     onConnect(entry);
   }
