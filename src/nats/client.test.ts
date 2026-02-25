@@ -2,24 +2,79 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Hoist mock factories so vi.mock can reference them -----------------
 
-const { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub } = vi.hoisted(() => {
-  const mockSubscribe = vi.fn();
-  const mockPublish = vi.fn();
-  const mockDrainConn = vi.fn().mockResolvedValue(undefined);
+const { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub, makeControllableSub } = vi.hoisted(
+  () => {
+    const mockSubscribe = vi.fn();
+    const mockPublish = vi.fn();
+    const mockDrainConn = vi.fn().mockResolvedValue(undefined);
 
-  /** Creates a fake Subscription that yields one message then stops. */
-  function makeFakeSub(msgJson: string) {
-    return {
-      [Symbol.asyncIterator]: async function* () {
-        yield { string: () => msgJson };
-      },
-      drain: vi.fn().mockResolvedValue(undefined),
-      unsubscribe: vi.fn(),
-    };
-  }
+    /** Creates a fake Subscription that yields one message then stops. */
+    function makeFakeSub(msgJson: string) {
+      return {
+        [Symbol.asyncIterator]: async function* () {
+          yield { string: () => msgJson };
+        },
+        drain: vi.fn().mockResolvedValue(undefined),
+        unsubscribe: vi.fn(),
+      };
+    }
 
-  return { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub };
-});
+    /**
+     * Creates a fake Subscription whose messages are delivered on demand.
+     * Call ``push(msgJson)`` to enqueue a message; call ``close()`` to end the
+     * iterator.  Returns ``{ sub, push, close }``.
+     */
+    function makeControllableSub() {
+      // A queue of resolve functions waiting for the next message
+      const resolvers: Array<(value: IteratorResult<{ string: () => string }>) => void> = [];
+      // Pending messages not yet consumed by the iterator
+      const pending: Array<{ string: () => string }> = [];
+      let done = false;
+
+      function push(msgJson: string) {
+        const item = { string: () => msgJson };
+        if (resolvers.length > 0) {
+          resolvers.shift()!({ value: item, done: false });
+        } else {
+          pending.push(item);
+        }
+      }
+
+      function close() {
+        done = true;
+        while (resolvers.length > 0) {
+          resolvers.shift()!({ value: undefined as never, done: true });
+        }
+      }
+
+      const sub = {
+        [Symbol.asyncIterator]: function () {
+          return {
+            next(): Promise<IteratorResult<{ string: () => string }>> {
+              if (pending.length > 0) {
+                return Promise.resolve({ value: pending.shift()!, done: false });
+              }
+              if (done) {
+                return Promise.resolve({ value: undefined as never, done: true });
+              }
+              return new Promise((resolve) => resolvers.push(resolve));
+            },
+            return(): Promise<IteratorResult<{ string: () => string }>> {
+              done = true;
+              return Promise.resolve({ value: undefined as never, done: true });
+            },
+          };
+        },
+        drain: vi.fn().mockResolvedValue(undefined),
+        unsubscribe: vi.fn(),
+      };
+
+      return { sub, push, close };
+    }
+
+    return { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub, makeControllableSub };
+  },
+);
 
 // --- Mock nats.ws -------------------------------------------------------
 
@@ -94,6 +149,54 @@ describe("NATS client", () => {
       expect(received.length).toBeGreaterThan(0);
       expect(received[0].sender).toBe("Bob");
       expect(received[0].text).toBe("hi");
+    });
+
+    it("does not invoke callback from a stale loop after reconnect", async () => {
+      // Build controllable subs for the *first* connect() (common + direct)
+      const stale1 = makeControllableSub();
+      const stale2 = makeControllableSub();
+
+      // First connect() uses the stale subs; second uses never-yielding subs
+      const fresh1 = makeControllableSub();
+      const fresh2 = makeControllableSub();
+
+      mockSubscribe
+        .mockReturnValueOnce(stale1.sub) // first connect, common sub
+        .mockReturnValueOnce(stale2.sub) // first connect, direct sub
+        .mockReturnValueOnce(fresh1.sub) // second connect, common sub
+        .mockReturnValueOnce(fresh2.sub); // second connect, direct sub
+
+      const staleCallback = vi.fn();
+      const freshCallback = vi.fn();
+
+      // First connect — loops start but are blocked waiting for messages
+      await connect("ws://localhost:9222", "chat", "Alice", staleCallback);
+
+      // Simulate StrictMode remount: disconnect then reconnect
+      await disconnect();
+      await connect("ws://localhost:9222", "chat", "Alice", freshCallback);
+
+      // Push a message into the *old* stale subs — generation is now stale
+      const payload: NatsMessage = {
+        sender: "Bob",
+        text: "stale message",
+        timestamp: new Date().toISOString(),
+      };
+      stale1.push(JSON.stringify(payload));
+      stale2.push(JSON.stringify(payload));
+
+      // Allow loops to process
+      await new Promise((r) => setTimeout(r, 20));
+
+      // Stale callback must NOT be called — generation mismatch aborts the loops
+      expect(staleCallback).not.toHaveBeenCalled();
+      // Fresh callback must also not be called — no messages pushed to fresh subs
+      expect(freshCallback).not.toHaveBeenCalled();
+
+      stale1.close();
+      stale2.close();
+      fresh1.close();
+      fresh2.close();
     });
   });
 
