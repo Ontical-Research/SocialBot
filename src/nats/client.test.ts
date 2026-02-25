@@ -37,7 +37,7 @@ vi.mock("nats.ws", () => ({
 
 // --- Import after mock setup -------------------------------------------
 
-import { connect, disconnect, onMessage, publish } from "./client";
+import { connect, disconnect, publish } from "./client";
 import type { NatsMessage } from "./client";
 
 // --- Tests -------------------------------------------------------------
@@ -56,23 +56,50 @@ describe("NATS client", () => {
 
   describe("connect()", () => {
     it("subscribes to the common topic", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice");
+      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
 
       const subjects = mockSubscribe.mock.calls.map((c) => c[0] as string);
       expect(subjects).toContain("chat");
     });
 
     it("subscribes to the direct topic", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice");
+      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
 
       const subjects = mockSubscribe.mock.calls.map((c) => c[0] as string);
       expect(subjects).toContain("chat.Alice");
+    });
+
+    it("accepts the onMessage callback as a required fourth argument", async () => {
+      const cb = vi.fn();
+      // Should not throw
+      await expect(connect("ws://localhost:9222", "chat", "Alice", cb)).resolves.toBeUndefined();
+    });
+
+    it("invokes the callback for incoming messages passed at connect time", async () => {
+      const received: NatsMessage[] = [];
+      const cb = (msg: NatsMessage) => received.push(msg);
+
+      const payload: NatsMessage = {
+        sender: "Bob",
+        text: "hi",
+        timestamp: new Date().toISOString(),
+      };
+      mockSubscribe.mockReturnValue(makeFakeSub(JSON.stringify(payload)));
+
+      await connect("ws://localhost:9222", "chat", "Alice", cb);
+
+      // Allow the async iterators to drain
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(received.length).toBeGreaterThan(0);
+      expect(received[0].sender).toBe("Bob");
+      expect(received[0].text).toBe("hi");
     });
   });
 
   describe("publish()", () => {
     it("publishes to the common topic", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice");
+      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
       publish("hello");
 
       expect(mockPublish).toHaveBeenCalledOnce();
@@ -80,7 +107,7 @@ describe("NATS client", () => {
     });
 
     it("sends the correct JSON wire format", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice");
+      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
       publish("hello");
 
       const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
@@ -95,32 +122,9 @@ describe("NATS client", () => {
     });
   });
 
-  describe("onMessage()", () => {
-    it("invokes the callback for incoming messages", async () => {
-      const received: NatsMessage[] = [];
-      onMessage((msg) => received.push(msg));
-
-      const payload: NatsMessage = {
-        sender: "Bob",
-        text: "hi",
-        timestamp: new Date().toISOString(),
-      };
-      mockSubscribe.mockReturnValue(makeFakeSub(JSON.stringify(payload)));
-
-      await connect("ws://localhost:9222", "chat", "Alice");
-
-      // Allow the async iterators to drain
-      await new Promise((r) => setTimeout(r, 20));
-
-      expect(received.length).toBeGreaterThan(0);
-      expect(received[0].sender).toBe("Bob");
-      expect(received[0].text).toBe("hi");
-    });
-  });
-
   describe("disconnect()", () => {
     it("drains the connection", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice");
+      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
       await disconnect();
 
       expect(mockDrainConn).toHaveBeenCalledOnce();

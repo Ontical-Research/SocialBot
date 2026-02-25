@@ -1,31 +1,39 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ChatView from "./ChatView";
 import type { MessageCallback } from "../nats/client";
 
+// Captured callback — updated each time connect() is called
+let capturedCallback: MessageCallback | null = null;
+
 // Mock the entire NATS client module
-vi.mock("../nats/client", () => {
-  let _callback: MessageCallback | null = null;
-  return {
-    connect: vi.fn().mockResolvedValue(undefined),
-    publish: vi.fn(),
-    disconnect: vi.fn().mockResolvedValue(undefined),
-    onMessage: vi.fn((cb: MessageCallback) => {
-      _callback = cb;
-    }),
-    // Expose for tests to trigger incoming messages
-    __trigger: (msg: Parameters<MessageCallback>[0]) => _callback?.(msg),
-  };
-});
+vi.mock("../nats/client", () => ({
+  connect: vi.fn((_url: string, _topic: string, _name: string, onMessage: MessageCallback) => {
+    capturedCallback = onMessage;
+    return Promise.resolve();
+  }),
+  publish: vi.fn(),
+  disconnect: vi.fn().mockResolvedValue(undefined),
+}));
 
 import * as natsClient from "../nats/client";
-const trigger = (
-  natsClient as unknown as { __trigger: (msg: Parameters<MessageCallback>[0]) => void }
-).__trigger;
+
+/** Trigger an incoming message via the captured callback. */
+function trigger(msg: Parameters<MessageCallback>[0]): void {
+  capturedCallback?.(msg);
+}
 
 describe("ChatView", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    capturedCallback = null;
+    vi.mocked(natsClient.connect).mockImplementation(
+      (_url: string, _topic: string, _name: string, onMessage: MessageCallback) => {
+        capturedCallback = onMessage;
+        return Promise.resolve();
+      },
+    );
+    vi.mocked(natsClient.disconnect).mockResolvedValue(undefined);
+    vi.mocked(natsClient.publish).mockReturnValue(undefined);
   });
 
   it("renders a message input and send button", () => {
@@ -34,10 +42,15 @@ describe("ChatView", () => {
     expect(screen.getByRole("button", { name: /send/i })).toBeDefined();
   });
 
-  it("connects to NATS on mount", async () => {
+  it("connects to NATS on mount with callback as fourth argument", async () => {
     render(<ChatView name="Alice" topic="chat" />);
     await waitFor(() => {
-      expect(natsClient.connect).toHaveBeenCalledWith("ws://localhost:9222", "chat", "Alice");
+      expect(natsClient.connect).toHaveBeenCalledWith(
+        "ws://localhost:9222",
+        "chat",
+        "Alice",
+        expect.any(Function),
+      );
     });
   });
 
@@ -75,8 +88,10 @@ describe("ChatView", () => {
 
   it("displays incoming messages from NATS", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.onMessage).toHaveBeenCalled());
-    trigger({ sender: "Bob", text: "Hi Alice!", timestamp: new Date().toISOString() });
+    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    act(() => {
+      trigger({ sender: "Bob", text: "Hi Alice!", timestamp: new Date().toISOString() });
+    });
     await waitFor(() => {
       expect(screen.getByText("Hi Alice!")).toBeDefined();
     });
@@ -84,8 +99,10 @@ describe("ChatView", () => {
 
   it("renders sender names in the message list", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.onMessage).toHaveBeenCalled());
-    trigger({ sender: "Bob", text: "Hey there", timestamp: new Date().toISOString() });
+    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    act(() => {
+      trigger({ sender: "Bob", text: "Hey there", timestamp: new Date().toISOString() });
+    });
     await waitFor(() => {
       expect(screen.getByText("Bob")).toBeDefined();
     });
@@ -93,8 +110,10 @@ describe("ChatView", () => {
 
   it("renders sender name with a color class", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.onMessage).toHaveBeenCalled());
-    trigger({ sender: "Carol", text: "Color test", timestamp: new Date().toISOString() });
+    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    act(() => {
+      trigger({ sender: "Carol", text: "Color test", timestamp: new Date().toISOString() });
+    });
     await waitFor(() => {
       const senderEl = screen.getByText("Carol");
       // Should have one of the color classes

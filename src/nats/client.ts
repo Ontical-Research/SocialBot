@@ -26,7 +26,6 @@ let nc: NatsConnection | null = null;
 let currentTopic: string = "";
 let currentName: string = "";
 let subscriptions: Subscription[] = [];
-let messageCallback: MessageCallback | null = null;
 
 const sc = StringCodec();
 
@@ -35,29 +34,28 @@ const sc = StringCodec();
 // ---------------------------------------------------------------------------
 
 /**
- * Register a callback that will be invoked whenever a message arrives on
- * either the common or the direct subscription.  Call before ``connect`` so
- * the callback is in place before any messages can arrive.
- *
- * :param cb: Function to call with each decoded ``NatsMessage``.
- */
-export function onMessage(cb: MessageCallback): void {
-  messageCallback = cb;
-}
-
-/**
  * Connect to the NATS server and subscribe to:
  *
  * - ``<topic>``         – the common/broadcast subject
  * - ``<topic>.<name>``  – the direct/unicast subject for this client
  *
- * :param url:   WebSocket URL of the NATS server, e.g. ``ws://localhost:9222``.
- * :param topic: Root subject name shared by all participants.
- * :param name:  This client's identity, appended to form the direct subject.
- * :returns:     A promise that resolves once the connection and subscriptions
- *               are established.
+ * The ``onMessage`` callback is required at connect time, ensuring it is
+ * always in place before any messages can arrive.  This eliminates the
+ * fragile two-step ``onMessage()`` + ``connect()`` registration pattern.
+ *
+ * :param url:       WebSocket URL of the NATS server, e.g. ``ws://localhost:9222``.
+ * :param topic:     Root subject name shared by all participants.
+ * :param name:      This client's identity, appended to form the direct subject.
+ * :param onMessage: Callback invoked for every inbound ``NatsMessage``.
+ * :returns:         A promise that resolves once the connection and subscriptions
+ *                   are established.
  */
-export async function connect(url: string, topic: string, name: string): Promise<void> {
+export async function connect(
+  url: string,
+  topic: string,
+  name: string,
+  onMessage: MessageCallback,
+): Promise<void> {
   // Clean up any existing connection first
   await disconnect();
 
@@ -71,7 +69,7 @@ export async function connect(url: string, topic: string, name: string): Promise
 
   // Drain each subscription asynchronously, forwarding messages to the callback
   for (const sub of subscriptions) {
-    void drainSubscription(sub);
+    void drainSubscription(sub, onMessage);
   }
 }
 
@@ -119,17 +117,17 @@ export async function disconnect(): Promise<void> {
 
 /**
  * Asynchronously iterate over a subscription and forward each message to the
- * registered callback.  Parse errors are silently ignored so that malformed
+ * provided callback.  Parse errors are silently ignored so that malformed
  * messages cannot crash the client.
  *
- * :param sub: The ``Subscription`` to iterate.
+ * :param sub:       The ``Subscription`` to iterate.
+ * :param onMessage: Callback to invoke for each decoded ``NatsMessage``.
  */
-async function drainSubscription(sub: Subscription): Promise<void> {
+async function drainSubscription(sub: Subscription, onMessage: MessageCallback): Promise<void> {
   for await (const msg of sub) {
-    if (!messageCallback) continue;
     try {
       const parsed = JSON.parse(msg.string()) as NatsMessage;
-      messageCallback(parsed);
+      onMessage(parsed);
     } catch {
       // Ignore malformed messages
     }
