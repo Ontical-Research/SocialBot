@@ -22,7 +22,11 @@ describe("useSettingsHistory", () => {
     const { result } = renderHook(() => useSettingsHistory());
 
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
 
     expect(result.current.history).toEqual([
@@ -34,7 +38,11 @@ describe("useSettingsHistory", () => {
     const { result } = renderHook(() => useSettingsHistory());
 
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
     act(() => {
       result.current.addEntry({ name: "Bob", topic: "chat.room2", natsUrl: "ws://localhost:9222" });
@@ -50,13 +58,21 @@ describe("useSettingsHistory", () => {
     const { result } = renderHook(() => useSettingsHistory());
 
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
     act(() => {
       result.current.addEntry({ name: "Bob", topic: "chat.room2", natsUrl: "ws://localhost:9222" });
     });
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
 
     expect(result.current.history).toEqual([
@@ -70,10 +86,18 @@ describe("useSettingsHistory", () => {
     const { result } = renderHook(() => useSettingsHistory());
 
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
 
     expect(result.current.history).toHaveLength(1);
@@ -83,11 +107,17 @@ describe("useSettingsHistory", () => {
     const { result } = renderHook(() => useSettingsHistory());
 
     act(() => {
-      result.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
 
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-    expect(stored).toEqual([{ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" }]);
+    expect(stored).toEqual([
+      { name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" },
+    ]);
   });
 
   it("reads existing history from localStorage on mount", () => {
@@ -128,7 +158,11 @@ describe("useSettingsHistory", () => {
     const { result: result1 } = renderHook(() => useSettingsHistory());
 
     act(() => {
-      result1.current.addEntry({ name: "Alice", topic: "chat.room1", natsUrl: "ws://localhost:9222" });
+      result1.current.addEntry({
+        name: "Alice",
+        topic: "chat.room1",
+        natsUrl: "ws://localhost:9222",
+      });
     });
 
     // Simulate a new component instance reading from localStorage

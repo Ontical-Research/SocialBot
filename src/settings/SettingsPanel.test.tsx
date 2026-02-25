@@ -126,7 +126,10 @@ describe("SettingsPanel", () => {
   });
 
   it("falls back to ws://localhost:9222 when config.json omits natsUrl", async () => {
-    vi.stubGlobal("fetch", makeFetchMock({ name: "Alice", topic: "chat.room1" } as typeof mockConfig));
+    vi.stubGlobal(
+      "fetch",
+      makeFetchMock({ name: "Alice", topic: "chat.room1" } as typeof mockConfig),
+    );
     const onConnect = vi.fn();
     const user = userEvent.setup();
 

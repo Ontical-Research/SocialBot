@@ -46,7 +46,11 @@ describe("parseArgs", () => {
   });
 
   it("accepts custom defaults", () => {
-    const result = parseArgs([], { name: "DefaultUser", topic: "general", natsUrl: "ws://custom:4222" });
+    const result = parseArgs([], {
+      name: "DefaultUser",
+      topic: "general",
+      natsUrl: "ws://custom:4222",
+    });
     expect(result).toEqual({ name: "DefaultUser", topic: "general", natsUrl: "ws://custom:4222" });
   });
 
