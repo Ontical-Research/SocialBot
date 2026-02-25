@@ -78,3 +78,38 @@ be used; participants on the same topic see each other's messages.
 ```bash
 npm test
 ```
+
+## Deployment (GitHub Pages)
+
+The app is published automatically to GitHub Pages on every push to `main` that passes CI.
+The live demo connects to whatever NATS server is running on the visitor's own machine at
+`ws://localhost:9222`, so no external NATS infrastructure is required.
+
+### One-time repository setup
+
+A repo admin must enable GitHub Actions-based Pages once before the first deployment will succeed:
+
+1. Go to **Settings → Pages** in the GitHub repository.
+2. Under **Build and deployment → Source**, select **GitHub Actions**.
+
+This only needs to be done once. After that, every merge to `main` triggers the `deploy` job
+in CI, which builds the app with the correct `/SocialBot/` base path and publishes the `dist`
+folder to GitHub Pages. The deployed URL is reported in the Actions UI under the `deploy` job.
+
+### How the CI deploy job works
+
+- The `deploy` job runs only on `push` to `main` (pull requests skip it).
+- It waits for the `ci` job (tests, lint, format check) to pass before deploying.
+- The build sets `VITE_BASE_URL=/SocialBot/` so all asset paths and routing work correctly
+  under the GitHub Pages subpath.
+
+### Live demo usage
+
+Open the published URL in two browser tabs. Make sure your local NATS server is running:
+
+```bash
+docker compose up -d
+```
+
+Then in each tab, enter a different name (e.g. `Alice` and `Bob`) with the same topic,
+and click **Connect**. Messages appear in both tabs in real time.
