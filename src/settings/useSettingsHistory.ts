@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 
-/** A name+topic pair stored in localStorage history. */
+/** A name+topic+natsUrl triple stored in localStorage history. */
 export interface HistoryEntry {
   name: string;
   topic: string;
+  natsUrl: string;
 }
 
 const STORAGE_KEY = "socialbot:history";
@@ -12,7 +13,11 @@ function loadHistory(): HistoryEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as HistoryEntry[];
+    return (JSON.parse(raw) as Partial<HistoryEntry>[]).map((e) => ({
+      name: e.name ?? "",
+      topic: e.topic ?? "",
+      natsUrl: e.natsUrl ?? "ws://localhost:9222",
+    }));
   } catch {
     return [];
   }
@@ -32,7 +37,7 @@ interface UseSettingsHistoryResult {
 /**
  * Custom hook for reading and writing the settings history stored in localStorage
  * under the key ``"socialbot:history"``. Entries are stored as a JSON array of
- * ``{name, topic}`` objects, most recent first. Duplicate name+topic pairs are
+ * ``{name, topic, natsUrl}`` objects, most recent first. Duplicate name+topic pairs are
  * deduplicated — the existing entry is removed and the new one is placed at the front.
  */
 export function useSettingsHistory(): UseSettingsHistoryResult {

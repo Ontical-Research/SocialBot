@@ -4,7 +4,7 @@ import { parseArgs } from "./parseArgs.js";
 describe("parseArgs", () => {
   it("returns defaults when no arguments are provided", () => {
     const result = parseArgs([]);
-    expect(result).toEqual({ name: "User", topic: "chat" });
+    expect(result).toEqual({ name: "User", topic: "chat", natsUrl: "ws://localhost:9222" });
   });
 
   it("parses --name flag with a space-separated value", () => {
@@ -21,7 +21,7 @@ describe("parseArgs", () => {
 
   it("parses both --name and --topic flags", () => {
     const result = parseArgs(["--name", "Bob", "--topic", "demo"]);
-    expect(result).toEqual({ name: "Bob", topic: "demo" });
+    expect(result).toEqual({ name: "Bob", topic: "demo", natsUrl: "ws://localhost:9222" });
   });
 
   it("parses --name=value syntax", () => {
@@ -36,7 +36,7 @@ describe("parseArgs", () => {
 
   it("parses mixed flag styles", () => {
     const result = parseArgs(["--name=Dave", "--topic", "news"]);
-    expect(result).toEqual({ name: "Dave", topic: "news" });
+    expect(result).toEqual({ name: "Dave", topic: "news", natsUrl: "ws://localhost:9222" });
   });
 
   it("ignores unknown flags", () => {
@@ -46,13 +46,32 @@ describe("parseArgs", () => {
   });
 
   it("accepts custom defaults", () => {
-    const result = parseArgs([], { name: "DefaultUser", topic: "general" });
-    expect(result).toEqual({ name: "DefaultUser", topic: "general" });
+    const result = parseArgs([], {
+      name: "DefaultUser",
+      topic: "general",
+      natsUrl: "ws://custom:4222",
+    });
+    expect(result).toEqual({ name: "DefaultUser", topic: "general", natsUrl: "ws://custom:4222" });
   });
 
   it("CLI args override custom defaults", () => {
     const result = parseArgs(["--name", "Override"], { name: "DefaultUser", topic: "general" });
     expect(result.name).toBe("Override");
     expect(result.topic).toBe("general");
+  });
+
+  it("returns default natsUrl when --nats-url is not provided", () => {
+    const result = parseArgs([]);
+    expect(result.natsUrl).toBe("ws://localhost:9222");
+  });
+
+  it("parses --nats-url flag with a space-separated value", () => {
+    const result = parseArgs(["--nats-url", "ws://myserver:4222"]);
+    expect(result.natsUrl).toBe("ws://myserver:4222");
+  });
+
+  it("parses --nats-url=value syntax", () => {
+    const result = parseArgs(["--nats-url=ws://myserver:4222"]);
+    expect(result.natsUrl).toBe("ws://myserver:4222");
   });
 });

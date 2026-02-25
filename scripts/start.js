@@ -6,8 +6,8 @@
  * then spawns `vite dev`.
  *
  * Usage:
- *   node scripts/start.js [--name <name>] [--topic <topic>]
- *   npm start -- --name Alice --topic chat.room1
+ *   node scripts/start.js [--name <name>] [--topic <topic>] [--nats-url <url>]
+ *   npm start -- --name Alice --topic chat.room1 --nats-url ws://localhost:9222
  */
 
 import { writeFileSync } from "node:fs";
@@ -19,9 +19,9 @@ import { parseArgs } from "./parseArgs.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "..");
 
-const { name, topic } = parseArgs(process.argv.slice(2));
+const { name, topic, natsUrl } = parseArgs(process.argv.slice(2));
 
-const config = { name, topic };
+const config = { name, topic, natsUrl };
 const configPath = resolve(projectRoot, "public", "config.json");
 
 writeFileSync(configPath, JSON.stringify(config) + "\n", "utf-8");
