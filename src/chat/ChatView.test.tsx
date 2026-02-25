@@ -62,12 +62,30 @@ describe("ChatView", () => {
     expect(natsClient.publish).toHaveBeenCalledWith("Hello world");
   });
 
-  it("shows own message immediately after sending (optimistic)", async () => {
+  it("does not show own message immediately after sending (no optimistic append)", () => {
     render(<ChatView name="Alice" topic="chat" />);
     const input = screen.getByPlaceholderText(/message/i);
-    fireEvent.change(input, { target: { value: "Optimistic message" } });
+    fireEvent.change(input, { target: { value: "My message" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
-    expect(screen.getByText("Optimistic message")).toBeDefined();
+    // The message must NOT appear until the NATS echo arrives
+    expect(screen.queryByText("My message")).toBeNull();
+  });
+
+  it("shows own message only after the NATS echo arrives", async () => {
+    render(<ChatView name="Alice" topic="chat" />);
+    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    const input = screen.getByPlaceholderText(/message/i);
+    fireEvent.change(input, { target: { value: "Echo message" } });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+    // Not visible yet — no echo
+    expect(screen.queryByText("Echo message")).toBeNull();
+    // Simulate the NATS server echoing the message back
+    act(() => {
+      trigger({ sender: "Alice", text: "Echo message", timestamp: new Date().toISOString() });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Echo message")).toBeDefined();
+    });
   });
 
   it("clears the input after sending", () => {
