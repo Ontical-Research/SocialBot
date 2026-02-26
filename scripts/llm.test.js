@@ -3,8 +3,23 @@
  * Tests for LLM model loading and message building helpers.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildMessages } from "./llm.js";
+
+// Mock LangChain providers so constructors don't validate API keys in CI
+vi.mock("@langchain/anthropic", () => ({
+  ChatAnthropic: vi.fn().mockImplementation(({ model }) => ({
+    model,
+    invoke: vi.fn(),
+  })),
+}));
+
+vi.mock("@langchain/openai", () => ({
+  ChatOpenAI: vi.fn().mockImplementation(({ model }) => ({
+    model,
+    invoke: vi.fn(),
+  })),
+}));
 
 describe("buildMessages", () => {
   it("prepends system prompt as a SystemMessage", () => {
