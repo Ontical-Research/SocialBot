@@ -18,6 +18,8 @@ export interface BotSessionResult {
   history: ChatMessage[];
   /** Last API error, or null if none. */
   error: string | null;
+  /** True while waiting for an LLM response. */
+  thinking: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -37,6 +39,7 @@ const PROXY_URL = "http://localhost:3001/api/chat";
 export function useBotSession(session: BotHistoryEntry): BotSessionResult {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
 
   // Use a ref so the message handler always has the latest history without
   // needing to be re-created (and without re-subscribing to NATS).
@@ -59,6 +62,7 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
       setHistory(updatedHistory);
 
       // Call the LLM proxy.
+      setThinking(true);
       try {
         const response = await fetch(PROXY_URL, {
           method: "POST",
@@ -92,6 +96,8 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
         setHistory(withReply);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setThinking(false);
       }
     },
     [session.name, session.model, session.promptContent],
@@ -107,5 +113,5 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
     };
   }, [session.topic, session.name, handleMessage]);
 
-  return { history, error };
+  return { history, error, thinking };
 }
