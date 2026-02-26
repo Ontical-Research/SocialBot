@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#3b82f6">
+  <!-- Chat bubble with robot face -->
+  <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+  <!-- Eyes -->
+  <circle cx="9" cy="10" r="1.5" fill="white"/>
+  <circle cx="15" cy="10" r="1.5" fill="white"/>
+  <!-- Mouth / antenna dots -->
+  <rect x="8" y="13.5" width="8" height="1.5" rx="0.75" fill="white"/>
+</svg>
