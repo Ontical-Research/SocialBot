@@ -6,7 +6,7 @@
  * from the environment — they are never accepted from the client.
  *
  * Usage:
- *   node scripts/bot-server.js [--port <port>]
+ *   node scripts/bot-server.js
  *
  * Endpoints:
  *   GET  /health     → { status: "ok" }
@@ -14,10 +14,9 @@
  */
 
 import express from "express";
-import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadModel, buildMessages } from "./llm.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.BOT_SERVER_PORT ?? 3001;
 
 /**
@@ -40,6 +39,9 @@ export function createApp() {
    * Request body:
    *   { model: string, systemPrompt: string, messages: Array<{ role, content, name? }> }
    *
+   * The ``name`` field on each message carries the NATS sender name so the LLM
+   * knows who said what.
+   *
    * Response:
    *   { reply: string }  on success
    *   { error: string }  on validation or model error (HTTP 400 / 502)
@@ -54,8 +56,26 @@ export function createApp() {
       return res.status(400).json({ error: "messages is required and must be an array" });
     }
 
-    // Stub response — real LLM integration comes in issue #28
-    return res.json({ reply: "stub response" });
+    // Load the model — throws for unknown providers (returns 400)
+    let llm;
+    try {
+      llm = loadModel(model);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Build message array with system prompt and name-tagged history
+    const langchainMessages = buildMessages(systemPrompt ?? "", messages);
+
+    // Invoke the LLM — API/auth errors return 502
+    try {
+      const response = await llm.invoke(langchainMessages);
+      const reply =
+        typeof response.content === "string" ? response.content : String(response.content);
+      return res.json({ reply });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
   });
 
   return app;
