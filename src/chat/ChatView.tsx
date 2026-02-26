@@ -27,6 +27,7 @@ function formatTime(iso: string): string {
 function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
+  const [sentHistory, setSentHistory] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef(0);
 
@@ -38,6 +39,15 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
   const appendMessage = useCallback((msg: NatsMessage) => {
     setMessages((prev) => [...prev, { ...msg, id: nextId() }]);
   }, []);
+
+  // Set page title to topic.name and restore on unmount
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = `${topic}.${name}`;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [name, topic]);
 
   useEffect(() => {
     void connect(natsUrl, topic, name, appendMessage);
@@ -56,6 +66,11 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
     if (!trimmed) return;
     // Let the NATS echo be the single source of truth — avoids duplicate messages.
     publish(trimmed);
+    // Add to sent history (deduplicated, most recent first)
+    setSentHistory((prev) => {
+      const filtered = prev.filter((m) => m !== trimmed);
+      return [trimmed, ...filtered];
+    });
     setText("");
   }
 
@@ -76,17 +91,38 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
 
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className="mb-3">
-            <div className="flex items-baseline gap-2">
-              <span className={`text-sm font-semibold ${senderColor(msg.sender)}`}>
-                {msg.sender}
-              </span>
-              <span className="text-xs text-gray-500">{formatTime(msg.timestamp)}</span>
+        {messages.map((msg) => {
+          const isSelf = msg.sender === name;
+          return (
+            <div
+              key={msg.id}
+              className={`mb-3 flex ${isSelf ? "justify-end" : "justify-start"}`}
+              data-testid="message-bubble"
+              data-sender={isSelf ? "self" : "other"}
+            >
+              <div
+                className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                  isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
+                }`}
+              >
+                {!isSelf && (
+                  <div className="mb-1 flex items-baseline gap-2">
+                    <span className={`text-sm font-semibold ${senderColor(msg.sender)}`}>
+                      {msg.sender}
+                    </span>
+                    <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
+                  </div>
+                )}
+                {isSelf && (
+                  <div className="mb-1 flex items-baseline justify-end gap-2">
+                    <span className="text-xs text-blue-200">{formatTime(msg.timestamp)}</span>
+                  </div>
+                )}
+                <p className="text-sm">{msg.text}</p>
+              </div>
             </div>
-            <p className="mt-0.5 text-gray-100">{msg.text}</p>
-          </div>
-        ))}
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -99,13 +135,29 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
+            list="sent-history"
             className="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
           />
+          <datalist id="sent-history">
+            {sentHistory.map((msg) => (
+              <option key={msg} value={msg} />
+            ))}
+          </datalist>
           <button
             onClick={handleSend}
-            className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            aria-label="Send"
+            className="flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            Send
+            {/* Right-pointing play triangle */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </button>
         </div>
       </div>

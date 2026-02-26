@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import ChatView from "./ChatView";
 import type { MessageCallback } from "../nats/client";
 
@@ -24,6 +24,8 @@ function trigger(msg: Parameters<MessageCallback>[0]): void {
 }
 
 describe("ChatView", () => {
+  const originalTitle = document.title;
+
   beforeEach(() => {
     capturedCallback = null;
     vi.mocked(natsClient.connect).mockImplementation(
@@ -34,6 +36,10 @@ describe("ChatView", () => {
     );
     vi.mocked(natsClient.disconnect).mockResolvedValue(undefined);
     vi.mocked(natsClient.publish).mockReturnValue(undefined);
+  });
+
+  afterEach(() => {
+    document.title = originalTitle;
   });
 
   it("renders a message input and send button", () => {
@@ -145,5 +151,88 @@ describe("ChatView", () => {
     await waitFor(() => {
       expect(natsClient.disconnect).toHaveBeenCalled();
     });
+  });
+
+  // Visual polish tests (issue #23)
+
+  it("sets document title to topic.name on mount", () => {
+    render(<ChatView name="Alice" topic="chat.room" />);
+    expect(document.title).toBe("chat.room.Alice");
+  });
+
+  it("restores document title on unmount", () => {
+    document.title = "SocialBot";
+    const { unmount } = render(<ChatView name="Alice" topic="chat.room" />);
+    expect(document.title).toBe("chat.room.Alice");
+    unmount();
+    expect(document.title).toBe("SocialBot");
+  });
+
+  it("own messages (matching name) are aligned to the right", async () => {
+    render(<ChatView name="Alice" topic="chat" />);
+    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    act(() => {
+      trigger({ sender: "Alice", text: "My own message", timestamp: new Date().toISOString() });
+    });
+    await waitFor(() => {
+      const msgEl = screen.getByText("My own message");
+      // The bubble wrapper should have an alignment class indicating self (right-aligned)
+      const bubble = msgEl.closest("[data-testid='message-bubble']");
+      expect(bubble).toBeDefined();
+      expect(bubble?.getAttribute("data-sender")).toBe("self");
+    });
+  });
+
+  it("other messages are aligned to the left", async () => {
+    render(<ChatView name="Alice" topic="chat" />);
+    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    act(() => {
+      trigger({ sender: "Bob", text: "Bob's message", timestamp: new Date().toISOString() });
+    });
+    await waitFor(() => {
+      const msgEl = screen.getByText("Bob's message");
+      const bubble = msgEl.closest("[data-testid='message-bubble']");
+      expect(bubble).toBeDefined();
+      expect(bubble?.getAttribute("data-sender")).toBe("other");
+    });
+  });
+
+  it("message input has a datalist for past sent messages", () => {
+    render(<ChatView name="Alice" topic="chat" />);
+    const input = screen.getByPlaceholderText(/message/i);
+    const listId = input.getAttribute("list");
+    expect(listId).toBeTruthy();
+    const datalist = document.getElementById(listId!);
+    expect(datalist).toBeDefined();
+    expect(datalist?.tagName).toBe("DATALIST");
+  });
+
+  it("sent messages appear in the past messages datalist", () => {
+    render(<ChatView name="Alice" topic="chat" />);
+    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "First message" } });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    const listId = input.getAttribute("list")!;
+    const datalist = document.getElementById(listId);
+    const options = datalist?.querySelectorAll("option");
+    const values = Array.from(options ?? []).map((o) => o.getAttribute("value"));
+    expect(values).toContain("First message");
+  });
+
+  it("deduplicates messages in the past messages datalist", () => {
+    render(<ChatView name="Alice" topic="chat" />);
+    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    const listId = input.getAttribute("list")!;
+    const datalist = document.getElementById(listId);
+    const options = datalist?.querySelectorAll("option");
+    const values = Array.from(options ?? []).map((o) => o.getAttribute("value"));
+    expect(values.filter((v) => v === "Hello").length).toBe(1);
   });
 });
