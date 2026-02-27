@@ -59,6 +59,7 @@ export function useBotSession(session: BotHistoryEntry, client?: NatsClient): Bo
       setHistory(updatedHistory);
 
       setThinking(true);
+      clientRef.current?.publishWaiting();
       try {
         const response = await fetch(PROXY_URL, {
           method: "POST",

@@ -47,8 +47,26 @@ function ChatView({
     return `msg-${counterRef.current.toString()}`;
   };
 
-  const appendMessage = useCallback((msg: NatsMessage) => {
-    setMessages((prev) => [...prev, { ...msg, id: nextId() }]);
+  const handleIncomingMessage = useCallback((msg: NatsMessage) => {
+    if (msg.type === "waiting") {
+      const waitingId = `waiting-${msg.sender}`;
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === waitingId);
+        if (exists) return prev;
+        return [...prev, { ...msg, id: waitingId }];
+      });
+    } else {
+      const waitingId = `waiting-${msg.sender}`;
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.id === waitingId);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = { ...msg, id: waitingId };
+          return updated;
+        }
+        return [...prev, { ...msg, id: nextId() }];
+      });
+    }
   }, []);
 
   // Set page title to topic.name when this tab is active
@@ -68,19 +86,19 @@ function ChatView({
     if (client) {
       activeClient = client;
       clientRef.current = activeClient;
-      void activeClient.connect(natsUrl, topic, name, appendMessage);
+      void activeClient.connect(natsUrl, topic, name, handleIncomingMessage);
     } else {
       void import("../nats/NatsClient").then(({ NatsClient: NatsClientClass }) => {
         activeClient = new NatsClientClass();
         clientRef.current = activeClient;
-        void activeClient.connect(natsUrl, topic, name, appendMessage);
+        void activeClient.connect(natsUrl, topic, name, handleIncomingMessage);
       });
     }
 
     return () => {
       void clientRef.current?.disconnect();
     };
-  }, [name, topic, natsUrl, appendMessage, client]);
+  }, [name, topic, natsUrl, handleIncomingMessage, client]);
 
   function handleSend() {
     const trimmed = text.trim();
@@ -141,7 +159,15 @@ function ChatView({
                     <span className="text-xs text-blue-200">{formatTime(msg.timestamp)}</span>
                   </div>
                 )}
-                <p className="text-sm">{msg.text}</p>
+                {msg.type === "waiting" ? (
+                  <div data-testid="typing-indicator" className="flex gap-1">
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:0ms] dark:bg-gray-400" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:150ms] dark:bg-gray-400" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:300ms] dark:bg-gray-400" />
+                  </div>
+                ) : (
+                  <p className="text-sm">{msg.text}</p>
+                )}
               </div>
             </div>
           );

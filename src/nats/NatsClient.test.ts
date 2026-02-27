@@ -91,7 +91,7 @@ vi.mock("nats.ws", () => ({
 // --- Import after mock setup -------------------------------------------
 
 import { NatsClient } from "./NatsClient";
-import type { NatsMessage } from "./NatsClient";
+import type { NatsMessage, MessageType } from "./NatsClient";
 
 // --- Tests -------------------------------------------------------------
 
@@ -284,10 +284,60 @@ describe("NatsClient", () => {
       await client.disconnect();
     });
 
+    it("does not set type field in the wire format", async () => {
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      client.publish("hello");
+
+      const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
+      const decoded = new TextDecoder().decode(rawPayload);
+      const parsed = JSON.parse(decoded) as NatsMessage;
+
+      expect(parsed.type).toBeUndefined();
+
+      await client.disconnect();
+    });
+
     it("throws if not connected", () => {
       const client = new NatsClient();
       expect(() => {
         client.publish("hello");
+      }).toThrow("Not connected");
+    });
+  });
+
+  describe("publishWaiting()", () => {
+    it("publishes to the common topic", async () => {
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      client.publishWaiting();
+
+      expect(mockPublish).toHaveBeenCalledOnce();
+      expect(mockPublish.mock.calls[0][0]).toBe("chat");
+
+      await client.disconnect();
+    });
+
+    it("emits type: waiting in the wire format", async () => {
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      client.publishWaiting();
+
+      const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
+      const decoded = new TextDecoder().decode(rawPayload);
+      const parsed = JSON.parse(decoded) as NatsMessage;
+
+      expect(parsed.type).toBe<MessageType>("waiting");
+      expect(parsed.text).toBe("");
+      expect(parsed.sender).toBe("Alice");
+
+      await client.disconnect();
+    });
+
+    it("throws if not connected", () => {
+      const client = new NatsClient();
+      expect(() => {
+        client.publishWaiting();
       }).toThrow("Not connected");
     });
   });

@@ -5,6 +5,9 @@ import type { NatsConnection, Subscription } from "nats.ws";
 // Public types
 // ---------------------------------------------------------------------------
 
+/** Discriminates a normal chat message from a "bot is thinking" placeholder. */
+export type MessageType = "message" | "waiting";
+
 /** The JSON wire-format for every message exchanged on the NATS bus. */
 export interface NatsMessage {
   /** Display name of the sender. */
@@ -13,6 +16,8 @@ export interface NatsMessage {
   text: string;
   /** ISO-8601 timestamp produced by the sender. */
   timestamp: string;
+  /** Message kind; absence is equivalent to "message" (backwards-compatible). */
+  type?: MessageType;
 }
 
 /** Callback invoked for every inbound message. */
@@ -91,6 +96,27 @@ export class NatsClient {
       sender: this.currentName,
       text,
       timestamp: new Date().toISOString(),
+    };
+
+    this.nc.publish(this.currentTopic, this.sc.encode(JSON.stringify(message)));
+  }
+
+  /**
+   * Publish a "waiting" sentinel to the common topic, signalling that this
+   * client has started an LLM call and a reply is forthcoming.
+   *
+   * :raises Error: If ``connect`` has not been called yet.
+   */
+  publishWaiting(): void {
+    if (!this.nc) {
+      throw new Error("Not connected – call connect() first");
+    }
+
+    const message: NatsMessage = {
+      sender: this.currentName,
+      text: "",
+      timestamp: new Date().toISOString(),
+      type: "waiting",
     };
 
     this.nc.publish(this.currentTopic, this.sc.encode(JSON.stringify(message)));

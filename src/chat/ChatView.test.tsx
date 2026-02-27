@@ -54,6 +54,13 @@ async function deliver(sender: string, text: string): Promise<void> {
   });
 }
 
+/** Deliver a "waiting" NATS message from the given sender. */
+function deliverWaiting(sender: string): void {
+  act(() => {
+    trigger({ sender, text: "", timestamp: new Date().toISOString(), type: "waiting" });
+  });
+}
+
 describe("ChatView", () => {
   const originalTitle = document.title;
 
@@ -234,5 +241,74 @@ describe("ChatView", () => {
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
     expect(datalistValues(input).filter((v) => v === "Hello").length).toBe(1);
+  });
+
+  describe("waiting messages", () => {
+    it("shows typing-indicator when a waiting message arrives", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+    });
+
+    it("replaces the typing-indicator with the real reply when it arrives", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+      await deliver("Bob", "Here is my reply");
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+      expect(screen.getByText("Here is my reply")).toBeDefined();
+    });
+
+    it("duplicate waiting events produce only one indicator", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getAllByTestId("typing-indicator")).toHaveLength(1);
+      });
+    });
+
+    it("preserves prior messages after replacing the waiting slot", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      await deliver("Carol", "Hello everyone");
+      deliverWaiting("Bob");
+      await deliver("Bob", "Bob's reply");
+      expect(screen.getByText("Hello everyone")).toBeDefined();
+      expect(screen.getByText("Bob's reply")).toBeDefined();
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+    });
+
+    it("waiting slot appears after earlier messages in the list", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      await deliver("Carol", "First message");
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+      const bubbles = screen.getAllByTestId("message-bubble");
+      expect(bubbles.length).toBe(2);
+      // First bubble contains the earlier message, second contains the indicator
+      expect(bubbles[0].textContent).toContain("First message");
+      expect(bubbles[1].querySelector("[data-testid='typing-indicator']")).toBeDefined();
+    });
   });
 });
