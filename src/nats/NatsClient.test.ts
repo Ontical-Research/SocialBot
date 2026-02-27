@@ -93,6 +93,20 @@ vi.mock("nats.ws", () => ({
 import { NatsClient } from "./NatsClient";
 import type { NatsMessage, MessageType } from "./NatsClient";
 
+// --- Helpers -----------------------------------------------------------
+
+async function connectedClient(cb: (msg: NatsMessage) => void = vi.fn()): Promise<NatsClient> {
+  const client = new NatsClient();
+  await client.connect("ws://localhost:9222", "chat", "Alice", cb);
+  return client;
+}
+
+function decodePublished(): NatsMessage {
+  const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
+  const decoded = new TextDecoder().decode(rawPayload);
+  return JSON.parse(decoded) as NatsMessage;
+}
+
 // --- Tests -------------------------------------------------------------
 
 describe("NatsClient", () => {
@@ -108,8 +122,7 @@ describe("NatsClient", () => {
 
   describe("connect()", () => {
     it("subscribes to the common topic", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = await connectedClient();
 
       const subjects = mockSubscribe.mock.calls.map((c) => c[0] as string);
       expect(subjects).toContain("chat");
@@ -118,8 +131,7 @@ describe("NatsClient", () => {
     });
 
     it("subscribes to the direct topic", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = await connectedClient();
 
       const subjects = mockSubscribe.mock.calls.map((c) => c[0] as string);
       expect(subjects).toContain("chat.Alice");
@@ -138,7 +150,6 @@ describe("NatsClient", () => {
 
     it("invokes the callback for incoming messages", async () => {
       const received: NatsMessage[] = [];
-      const cb = (msg: NatsMessage) => received.push(msg);
 
       const payload: NatsMessage = {
         sender: "Bob",
@@ -147,8 +158,7 @@ describe("NatsClient", () => {
       };
       mockSubscribe.mockReturnValue(makeFakeSub(JSON.stringify(payload)));
 
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", cb);
+      const client = await connectedClient((msg) => received.push(msg));
 
       await new Promise((r) => setTimeout(r, 20));
 
@@ -202,7 +212,7 @@ describe("NatsClient", () => {
   });
 
   describe("two instances", () => {
-    it("two instances can connect simultaneously with separate callbacks", async () => {
+    it("can connect simultaneously with separate callbacks", async () => {
       const received1: NatsMessage[] = [];
       const received2: NatsMessage[] = [];
 
@@ -257,8 +267,7 @@ describe("NatsClient", () => {
 
   describe("publish()", () => {
     it("publishes to the common topic", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = await connectedClient();
       client.publish("hello");
 
       expect(mockPublish).toHaveBeenCalledOnce();
@@ -268,14 +277,10 @@ describe("NatsClient", () => {
     });
 
     it("sends the correct JSON wire format", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = await connectedClient();
       client.publish("hello");
 
-      const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
-      const decoded = new TextDecoder().decode(rawPayload);
-      const parsed = JSON.parse(decoded) as NatsMessage;
-
+      const parsed = decodePublished();
       expect(parsed.sender).toBe("Alice");
       expect(parsed.text).toBe("hello");
       expect(typeof parsed.timestamp).toBe("string");
@@ -285,15 +290,10 @@ describe("NatsClient", () => {
     });
 
     it("does not set type field in the wire format", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = await connectedClient();
       client.publish("hello");
 
-      const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
-      const decoded = new TextDecoder().decode(rawPayload);
-      const parsed = JSON.parse(decoded) as NatsMessage;
-
-      expect(parsed.type).toBeUndefined();
+      expect(decodePublished().type).toBeUndefined();
 
       await client.disconnect();
     });
@@ -306,11 +306,19 @@ describe("NatsClient", () => {
     });
   });
 
-  describe("publishCancel()", () => {
+  describe.each([
+    {
+      method: "publishCancel" as const,
+      type: "cancel" as MessageType,
+    },
+    {
+      method: "publishWaiting" as const,
+      type: "waiting" as MessageType,
+    },
+  ])("$method()", ({ method, type }) => {
     it("publishes to the common topic", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      client.publishCancel();
+      const client = await connectedClient();
+      client[method]();
 
       expect(mockPublish).toHaveBeenCalledOnce();
       expect(mockPublish.mock.calls[0][0]).toBe("chat");
@@ -318,16 +326,12 @@ describe("NatsClient", () => {
       await client.disconnect();
     });
 
-    it("emits type: cancel in the wire format", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      client.publishCancel();
+    it(`emits type: ${type} in the wire format`, async () => {
+      const client = await connectedClient();
+      client[method]();
 
-      const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
-      const decoded = new TextDecoder().decode(rawPayload);
-      const parsed = JSON.parse(decoded) as NatsMessage;
-
-      expect(parsed.type).toBe<MessageType>("cancel");
+      const parsed = decodePublished();
+      expect(parsed.type).toBe<MessageType>(type);
       expect(parsed.text).toBe("");
       expect(parsed.sender).toBe("Alice");
 
@@ -337,51 +341,14 @@ describe("NatsClient", () => {
     it("throws if not connected", () => {
       const client = new NatsClient();
       expect(() => {
-        client.publishCancel();
-      }).toThrow("Not connected");
-    });
-  });
-
-  describe("publishWaiting()", () => {
-    it("publishes to the common topic", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      client.publishWaiting();
-
-      expect(mockPublish).toHaveBeenCalledOnce();
-      expect(mockPublish.mock.calls[0][0]).toBe("chat");
-
-      await client.disconnect();
-    });
-
-    it("emits type: waiting in the wire format", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      client.publishWaiting();
-
-      const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
-      const decoded = new TextDecoder().decode(rawPayload);
-      const parsed = JSON.parse(decoded) as NatsMessage;
-
-      expect(parsed.type).toBe<MessageType>("waiting");
-      expect(parsed.text).toBe("");
-      expect(parsed.sender).toBe("Alice");
-
-      await client.disconnect();
-    });
-
-    it("throws if not connected", () => {
-      const client = new NatsClient();
-      expect(() => {
-        client.publishWaiting();
+        client[method]();
       }).toThrow("Not connected");
     });
   });
 
   describe("disconnect()", () => {
     it("drains the connection", async () => {
-      const client = new NatsClient();
-      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = await connectedClient();
       await client.disconnect();
 
       expect(mockDrainConn).toHaveBeenCalledOnce();

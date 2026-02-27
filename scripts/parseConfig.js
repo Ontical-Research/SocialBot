@@ -19,7 +19,7 @@
  * @returns {{ natsUrl: string, agents: import('./parseConfig').UnifiedEntry[] }}
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
@@ -29,21 +29,34 @@ const projectRoot = resolve(__dirname, "..");
 
 const DEFAULT_NATS_URL = "ws://localhost:9222";
 
+/**
+ * @typedef {{ nats_url?: string, agents?: RawAgent[] }} YamlConfig
+ * @typedef {{ name?: string, topic?: string, model?: string, prompt?: string }} RawAgent
+ * @typedef {{ name: string, topic: string, natsUrl: string, model: string, promptPath: string, promptContent: string }} UnifiedEntry
+ */
+
+/**
+ * @param {string[]} args
+ * @returns {{ natsUrl: string, agents: UnifiedEntry[] }}
+ */
 export function parseConfig(args) {
-  const maybeYaml = args.find((a) => a.endsWith(".yaml") || a.endsWith(".yml"));
+  const maybeYaml = args.find(
+    (/** @type {string} */ a) => a.endsWith(".yaml") || a.endsWith(".yml"),
+  );
 
   if (!maybeYaml) {
     return { natsUrl: DEFAULT_NATS_URL, agents: [] };
   }
 
   const rawYaml = readFileSync(maybeYaml, "utf-8");
-  const config = yaml.load(rawYaml);
+  /** @type {YamlConfig} */
+  const config = /** @type {YamlConfig} */ (yaml.load(rawYaml));
 
-  const natsUrl = config?.nats_url ?? DEFAULT_NATS_URL;
+  const natsUrl = config.nats_url ?? DEFAULT_NATS_URL;
 
-  const rawAgents = Array.isArray(config?.agents) ? config.agents : [];
+  const rawAgents = Array.isArray(config.agents) ? config.agents : [];
 
-  const agents = rawAgents.map((agent) => {
+  const agents = rawAgents.map((/** @type {RawAgent} */ agent) => {
     const name = agent.name ?? "";
     const topic = agent.topic ?? "";
     const model = agent.model ?? "";
@@ -61,4 +74,16 @@ export function parseConfig(args) {
   });
 
   return { natsUrl, agents };
+}
+
+/**
+ * Write the resolved config to ``public/config.json``.
+ *
+ * @param {{ natsUrl: string, agents: object[] }} config
+ * @returns {string} Absolute path of the written file
+ */
+export function writePublicConfig(config) {
+  const configPath = resolve(projectRoot, "public", "config.json");
+  writeFileSync(configPath, JSON.stringify(config) + "\n", "utf-8");
+  return configPath;
 }

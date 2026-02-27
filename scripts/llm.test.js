@@ -25,21 +25,21 @@ describe("buildMessages", () => {
   it("prepends system prompt as a SystemMessage", () => {
     const msgs = buildMessages("Be helpful.", []);
     expect(msgs).toHaveLength(1);
-    expect(msgs[0]._getType()).toBe("system");
+    expect(msgs[0].type).toBe("system");
     expect(msgs[0].content).toBe("Be helpful.");
   });
 
   it("converts user role messages to HumanMessage", () => {
     const msgs = buildMessages("Be helpful.", [{ role: "user", content: "Hello" }]);
     const human = msgs[1];
-    expect(human._getType()).toBe("human");
+    expect(human.type).toBe("human");
     expect(human.content).toBe("Hello");
   });
 
   it("converts assistant role messages to AIMessage", () => {
     const msgs = buildMessages("Be helpful.", [{ role: "assistant", content: "Hi!" }]);
     const ai = msgs[1];
-    expect(ai._getType()).toBe("ai");
+    expect(ai.type).toBe("ai");
     expect(ai.content).toBe("Hi!");
   });
 
