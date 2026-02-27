@@ -169,6 +169,14 @@ function App({ initialAgents }: AppProps) {
 
         {/* Theme toggle + Add tab button */}
         <div className="border-t border-gray-200 p-2 dark:border-gray-700">
+          {sharedTopic && (
+            <div
+              className="mb-1 truncate px-1 text-center font-mono text-xs text-green-400"
+              title={sharedTopic}
+            >
+              {sharedTopic}
+            </div>
+          )}
           <button
             onClick={toggle}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
@@ -186,19 +194,8 @@ function App({ initialAgents }: AppProps) {
         </div>
       </nav>
 
-      {/* Main column: global header + content area */}
+      {/* Main column: content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Global header — shared NATS topic */}
-        <header className="flex items-center border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-          <span className="font-semibold text-gray-900 dark:text-white">SocialBot</span>
-          {sharedTopic && (
-            <>
-              <span className="mx-2 text-gray-400 dark:text-gray-500">·</span>
-              <span className="font-mono text-sm text-green-400">{sharedTopic}</span>
-            </>
-          )}
-        </header>
-
         {/* Content area — all tabs rendered simultaneously; inactive ones hidden */}
         <div className="relative flex flex-1 overflow-hidden">
           {tabs.map((tab) => (
