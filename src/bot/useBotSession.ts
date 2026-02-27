@@ -26,7 +26,7 @@ export interface BotSessionResult {
 // Hook
 // ---------------------------------------------------------------------------
 
-const PROXY_URL = "http://localhost:3001/api/chat";
+const PROXY_URL = "/api/chat";
 
 /**
  * Connects to NATS on mount, subscribes to incoming messages, and calls
