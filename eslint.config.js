@@ -92,6 +92,7 @@ export default defineConfig([
   // -------------------------------------------------------------------------
   {
     files: ["scripts/**/*.js"],
+    ignores: ["scripts/**/*.test.js"],
     extends: [js.configs.recommended, tseslint.configs.strictTypeChecked, configPrettier],
     languageOptions: {
       ecmaVersion: 2023,
@@ -115,6 +116,23 @@ export default defineConfig([
       "@typescript-eslint/no-misused-promises": "error",
       // Not applicable to plain JS — catch params can't be annotated as unknown
       "@typescript-eslint/use-unknown-in-catch-callback-variable": "off",
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Script test files — plain JS baseline + vitest rules, no type-checking
+  // (mock types from vi.fn() don't survive checkJs type inference)
+  // -------------------------------------------------------------------------
+  {
+    files: ["scripts/**/*.test.js"],
+    plugins: { vitest },
+    extends: [js.configs.recommended, configPrettier],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: { ...globals.node },
+    },
+    rules: {
+      ...vitest.configs.recommended.rules,
     },
   },
 

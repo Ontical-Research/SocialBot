@@ -19,5 +19,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["scripts/**/*.js"]
+  "include": ["scripts/**/*.js"],
+  "exclude": ["scripts/**/*.test.js"]
 }
