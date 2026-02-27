@@ -44,112 +44,84 @@ docker compose down
 npm install
 ```
 
-### 3. Start the development server
+### 3. (Optional) Set LLM API keys
+
+To use an AI bot participant, export one or both API keys before starting:
 
 ```bash
-npm run dev
+export ANTHROPIC_API_KEY=sk-ant-...   # enables Claude models
+export OPENAI_API_KEY=sk-...          # enables GPT/o-series models
 ```
+
+The login page's **Model** dropdown will only show models whose provider key is present.
+If no keys are set, the dropdown shows only **None** (human mode).
+
+### 4. Start the app
+
+```bash
+npm start
+```
+
+This starts the Express proxy server on port 3001 and the Vite dev server, then opens
+`http://localhost:5173/` in your browser automatically.
+
+## Using the Login Page
+
+The unified login page handles both human chat and bot mode in a single form:
+
+| Field  | Human mode         | Bot mode                         |
+| ------ | ------------------ | -------------------------------- |
+| Name   | Your display name  | Bot's display name               |
+| Topic  | NATS topic to join | NATS topic to join               |
+| Model  | **None**           | Select a model from the dropdown |
+| Prompt | (disabled)         | Select from history or Browse... |
+
+- **Human mode** — leave **Model** as `None` and click **Connect**. You join the chat as a
+  human participant and can send messages.
+- **Bot mode** — select a model, then choose a prompt file. The bot joins silently, listens
+  on the topic, and replies using the LLM.
+
+Name and topic selections are remembered across sessions. Previously used models and prompts
+appear in their respective dropdowns for quick re-selection.
 
 ## Chatting as Alice and Bob
 
-With the NATS broker and dev server both running, open two browser tabs:
+With the NATS broker and app running, open two browser tabs at `http://localhost:5173/`.
 
-**Tab 1 — Alice**
+**Tab 1 — Alice:** Enter **Name:** `Alice`, **Topic:** `chat`, **Model:** `None`, click **Connect**.
 
-```
-http://localhost:5173
-```
+**Tab 2 — Bob:** Enter **Name:** `Bob`, **Topic:** `chat`, **Model:** `None`, click **Connect**.
 
-Enter **Name:** `Alice`, **Topic:** `chat`, then click **Connect**.
-
-**Tab 2 — Bob**
-
-```
-http://localhost:5173
-```
-
-Enter **Name:** `Bob`, **Topic:** `chat`, then click **Connect**.
-
-Messages sent in either tab appear instantly in both. Any name and topic can
-be used; participants on the same topic see each other's messages.
+Messages sent in either tab appear instantly in both. Any name and topic can be used;
+participants on the same topic see each other's messages.
 
 ## Running the Bot
 
-SocialBot includes an AI bot participant that joins the chat room and responds to messages
-using a large language model. The bot requires a local proxy server and an LLM API key.
+To add an AI participant, set an LLM API key (see step 3 above), then open a new browser
+tab at `http://localhost:5173/`.
 
-### Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) with the Compose plugin (v2+)
-- [Node.js](https://nodejs.org/) (see `package.json` for the required version)
-- An LLM API key — set as an environment variable before starting the bot:
-
-For Anthropic models (e.g. `claude-haiku-4-5-20251001`):
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-```
-
-For OpenAI models (e.g. `gpt-4o`, `o3-mini`), set `OPENAI_API_KEY` instead.
-Other providers need their own keys — see the model string format below.
-
-### Model string format
-
-The bot's **Model** field accepts model identifier strings in the format used by the
-provider's API:
-
-| Provider  | Example model string        |
-| --------- | --------------------------- |
-| Anthropic | `claude-haiku-4-5-20251001` |
-| Anthropic | `claude-sonnet-4-6`         |
-| OpenAI    | `gpt-4o`                    |
-| OpenAI    | `o3-mini`                   |
-
-For the full list of Anthropic model names, see the
-[Anthropic models documentation](https://docs.anthropic.com/en/docs/about-claude/models).
-For OpenAI, see the [OpenAI models page](https://platform.openai.com/docs/models).
-
-### Steps to start the bot
-
-1. Start the NATS broker (if not already running):
-
-   ```bash
-   docker compose up -d
-   ```
-
-2. Start the bot server and Vite dev server together:
-
-   ```bash
-   npm run bot
-   ```
-
-   This opens `http://localhost:5173/bot` in your browser automatically.
-
-### Alice + Bob demo session
-
-With the bot running, open a second browser tab for Alice:
-
-**Tab 1 — Alice (human)**
-
-```
-http://localhost:5173
-```
-
-Enter **Name:** `Alice`, **Topic:** `chat`, then click **Connect**.
-
-**Tab 2 — Bob (bot)**
-
-```
-http://localhost:5173/bot
-```
+**Example — Bob as a Claude bot:**
 
 - **Name:** `Bob`
 - **Topic:** `chat`
 - **Model:** `claude-haiku-4-5-20251001`
-- **Prompt file:** browse to `prompts/friendly.md` in the repo root
+- **Prompt:** Browse to `prompts/friendly.md` in the repo root (or any `.md`/`.txt` file)
 
-Click **Connect**. Alice's messages will appear in both windows, and Bob's LLM
-responses will appear within a few seconds.
+Click **Connect**. Alice's messages appear in both windows, and Bob's LLM responses appear
+within a few seconds.
+
+### Available models
+
+The **Model** dropdown is populated from the server based on which API keys are set:
+
+| Key                 | Models available                                                    |
+| ------------------- | ------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` | `claude-haiku-4-5-20251001`, `claude-sonnet-4-6`, `claude-opus-4-6` |
+| `OPENAI_API_KEY`    | `gpt-4o`, `o3`, `o4-mini`                                           |
+
+For the full list of Anthropic model names, see the
+[Anthropic models documentation](https://docs.anthropic.com/en/docs/about-claude/models).
+For OpenAI, see the [OpenAI models page](https://platform.openai.com/docs/models).
 
 ## Running Tests
 
@@ -183,8 +155,8 @@ folder to GitHub Pages. The deployed URL is reported in the Actions UI under the
 
 ### Live demo usage
 
-> **Note:** The GitHub Pages demo is the **human UI only** — the `/bot` route and LLM
-> proxy require a local server and API key. For Alice + Bob bot sessions, follow the
+> **Note:** The GitHub Pages demo shows the unified login page, but bot mode requires a
+> local `npm start` session with API keys set. For Alice + Bob bot sessions, follow the
 > [Running the Bot](#running-the-bot) instructions above.
 
 Open the published URL in two browser tabs. Make sure your local NATS server is running:
@@ -193,5 +165,5 @@ Open the published URL in two browser tabs. Make sure your local NATS server is 
 docker compose up -d
 ```
 
-Then in each tab, enter a different name (e.g. `Alice` and `Bob`) with the same topic,
-and click **Connect**. Messages appear in both tabs in real time.
+Then in each tab, enter a different name (e.g. `Alice` and `Bob`) with the same topic and
+**Model** set to `None`, then click **Connect**. Messages appear in both tabs in real time.
