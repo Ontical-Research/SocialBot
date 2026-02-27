@@ -61,10 +61,15 @@ vite.stdout.on("data", (chunk) => {
     const match = text.match(/Local:\s+(http:\/\/localhost:\d+)\//);
     if (match) {
       browserOpened = true;
-      const url = `${match[1]}/`;
+      const url = `${String(match[1])}/`;
       import("open")
         .then(({ default: open }) => open(url))
-        .catch((err) => console.warn("[start] Could not open browser automatically:", err.message));
+        .catch((err) => {
+          console.warn(
+            "[start] Could not open browser automatically:",
+            err instanceof Error ? err.message : String(err),
+          );
+        });
     }
   }
 });
@@ -85,10 +90,13 @@ vite.on("error", (err) => {
         if (match) {
           browserOpened = true;
           import("open")
-            .then(({ default: open }) => open(`${match[1]}/`))
-            .catch((err) =>
-              console.warn("[start] Could not open browser automatically:", err.message),
-            );
+            .then(({ default: open }) => open(`${String(match[1])}/`))
+            .catch((err) => {
+              console.warn(
+                "[start] Could not open browser automatically:",
+                err instanceof Error ? err.message : String(err),
+              );
+            });
         }
       }
     });

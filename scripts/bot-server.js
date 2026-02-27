@@ -18,7 +18,7 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import { loadModel, buildMessages } from "./llm.js";
 
-const PORT = process.env.BOT_SERVER_PORT ?? 3001;
+const PORT = process.env.BOT_SERVER_PORT ?? "3001";
 
 const ANTHROPIC_MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"];
 const OPENAI_MODELS = ["gpt-4o", "o3", "o4-mini"];
@@ -73,7 +73,8 @@ export function createApp() {
     try {
       llm = loadModel(model);
     } catch (err) {
-      return res.status(400).json({ error: err.message });
+      const message = err instanceof Error ? err.message : String(err);
+      return res.status(400).json({ error: message });
     }
 
     // Build message array with system prompt and name-tagged history
@@ -83,10 +84,11 @@ export function createApp() {
     try {
       const response = await llm.invoke(langchainMessages);
       const reply =
-        typeof response.content === "string" ? response.content : String(response.content);
+        typeof response.content === "string" ? response.content : JSON.stringify(response.content);
       return res.json({ reply });
     } catch (err) {
-      return res.status(502).json({ error: err.message });
+      const message = err instanceof Error ? err.message : String(err);
+      return res.status(502).json({ error: message });
     }
   });
 

@@ -88,10 +88,41 @@ export default defineConfig([
   },
 
   // -------------------------------------------------------------------------
-  // Scripts — no type-aware linting (plain JS), still strict baseline
+  // Scripts — type-aware linting via checkJs + tsconfig.scripts.json
   // -------------------------------------------------------------------------
   {
-    files: ["scripts/**/*.{js,mjs}", "vite.config.ts", "vitest.config.ts"],
+    files: ["scripts/**/*.js"],
+    extends: [js.configs.recommended, tseslint.configs.strictTypeChecked, configPrettier],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: { ...globals.node },
+      parserOptions: {
+        projectService: false,
+        project: "./tsconfig.scripts.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      // JSDoc-typed JS often requires casting through unknown
+      "@typescript-eslint/no-unsafe-assignment": "warn",
+      "@typescript-eslint/no-unsafe-call": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
+      "@typescript-eslint/no-unsafe-return": "warn",
+      "@typescript-eslint/no-unsafe-argument": "warn",
+      // No floating promises
+      "@typescript-eslint/no-floating-promises": "error",
+      // No misused promises
+      "@typescript-eslint/no-misused-promises": "error",
+      // Not applicable to plain JS — catch params can't be annotated as unknown
+      "@typescript-eslint/use-unknown-in-catch-callback-variable": "off",
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Vite/Vitest config — plain JS baseline, node globals
+  // -------------------------------------------------------------------------
+  {
+    files: ["vite.config.ts", "vitest.config.ts"],
     extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,
