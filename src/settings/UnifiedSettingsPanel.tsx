@@ -100,13 +100,16 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
   }
 
   return (
-    <main className="flex h-full flex-col items-center justify-center overflow-y-auto bg-gray-900 text-white">
-      <div className="w-full max-w-sm rounded-xl bg-gray-800 p-8 shadow-lg">
+    <main className="flex h-full flex-col items-center justify-center overflow-y-auto bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
+      <div className="w-full max-w-sm rounded-xl bg-gray-100 p-8 shadow-lg dark:bg-gray-800">
         <h1 className="mb-6 text-center text-2xl font-bold">SocialBot</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Name */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="unified-name-input" className="text-sm font-medium text-gray-300">
+            <label
+              htmlFor="unified-name-input"
+              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+            >
               Name
             </label>
             <input
@@ -119,7 +122,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
                 setName(e.target.value);
               }}
               required
-              className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               placeholder="Your name"
             />
             <datalist id="unified-name-history">
@@ -128,13 +131,18 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               ))}
             </datalist>
             {isNameTaken && (
-              <p className="text-xs text-red-400">Name "{name}" is already in use.</p>
+              <p className="text-xs text-red-500 dark:text-red-400">
+                Name "{name}" is already in use.
+              </p>
             )}
           </div>
 
           {/* Topic */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="unified-topic-input" className="text-sm font-medium text-gray-300">
+            <label
+              htmlFor="unified-topic-input"
+              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+            >
               Topic
             </label>
             <input
@@ -147,7 +155,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
                 setTopic(e.target.value);
               }}
               required
-              className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               placeholder="NATS topic (e.g. chat.room1)"
             />
             <datalist id="unified-topic-history">
@@ -159,7 +167,10 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
 
           {/* Model */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="unified-model-select" className="text-sm font-medium text-gray-300">
+            <label
+              htmlFor="unified-model-select"
+              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+            >
               Model
             </label>
             <select
@@ -167,7 +178,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               aria-label="Model"
               value={selectedModel}
               onChange={handleModelChange}
-              className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             >
               {availableModels.map((m) => (
                 <option key={m} value={m}>
@@ -179,7 +190,10 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
 
           {/* Prompt */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="unified-prompt-select" className="text-sm font-medium text-gray-300">
+            <label
+              htmlFor="unified-prompt-select"
+              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+            >
               Prompt
             </label>
             <select
@@ -188,7 +202,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               value={selectedPromptPath}
               onChange={handlePromptChange}
               disabled={!isBotMode}
-              className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             >
               <option value="">-- select prompt --</option>
               {promptHistory.map((p) => (

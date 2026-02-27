@@ -292,6 +292,22 @@ describe("App", () => {
     expect(chatHeader?.textContent).toBe("Alice");
   });
 
+  it("renders the theme toggle button", async () => {
+    render(<App />);
+    await screen.findByRole("button", { name: /connect/i });
+    expect(screen.getByRole("button", { name: /switch to (light|dark) mode/i })).toBeDefined();
+  });
+
+  it("toggle button changes aria-label after click", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("button", { name: /connect/i });
+    const btn = screen.getByRole("button", { name: /switch to (light|dark) mode/i });
+    const before = btn.getAttribute("aria-label");
+    await user.click(btn);
+    expect(btn.getAttribute("aria-label")).not.toBe(before);
+  });
+
   it("preserves sent-message datalist when switching tabs and back", async () => {
     const user = userEvent.setup();
     render(<App />);

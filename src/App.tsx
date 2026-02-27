@@ -6,6 +6,7 @@ import BotChatView from "./bot/BotChatView";
 import type { UnifiedEntry } from "./settings/useUnifiedSettingsHistory";
 import type { BotHistoryEntry } from "./bot/useBotSettingsHistory";
 import type { NatsClient } from "./nats/NatsClient";
+import { useTheme } from "./theme/useTheme";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,6 +49,7 @@ interface AppProps {
 }
 
 function App({ initialAgents }: AppProps) {
+  const { isDark, toggle } = useTheme();
   const [tabs, setTabs] = useState<TabState[]>(() => {
     if (initialAgents && initialAgents.length > 0) {
       return initialAgents.map((agent) => makeTab(agent, null));
@@ -104,10 +106,10 @@ function App({ initialAgents }: AppProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
+    <div className="flex h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
       {/* Tab strip */}
       <nav
-        className="flex w-40 flex-shrink-0 flex-col border-r border-gray-700 bg-gray-800"
+        className="flex w-40 flex-shrink-0 flex-col border-r border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800"
         aria-label="Agent tabs"
       >
         <div className="flex flex-1 flex-col overflow-y-auto py-2">
@@ -120,27 +122,27 @@ function App({ initialAgents }: AppProps) {
                 }}
                 className={`w-full truncate px-3 py-2 text-left text-sm ${
                   tab.id === activeTabId
-                    ? "bg-gray-700 font-semibold text-white"
-                    : "text-gray-400 hover:bg-gray-700/50 hover:text-white"
+                    ? "bg-gray-200 font-semibold text-gray-900 dark:bg-gray-700 dark:text-white"
+                    : "text-gray-500 hover:bg-gray-200/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white"
                 }`}
               >
                 {tabLabel(tab)}
               </button>
               {confirmRemoveId === tab.id ? (
-                <div className="flex items-center justify-between bg-red-900/30 px-2 py-1">
-                  <span className="text-xs text-red-300">Confirm?</span>
+                <div className="flex items-center justify-between bg-red-100 px-2 py-1 dark:bg-red-900/30">
+                  <span className="text-xs text-red-600 dark:text-red-300">Confirm?</span>
                   <div className="flex gap-1">
                     <button
                       onClick={() => {
                         void confirmRemoveTab(tab.id);
                       }}
-                      className="rounded px-1 text-xs text-red-300 hover:text-red-100"
+                      className="rounded px-1 text-xs text-red-600 hover:text-red-800 dark:text-red-300 dark:hover:text-red-100"
                     >
                       Yes
                     </button>
                     <button
                       onClick={cancelRemoveTab}
-                      className="rounded px-1 text-xs text-gray-400 hover:text-white"
+                      className="rounded px-1 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                     >
                       No
                     </button>
@@ -162,12 +164,19 @@ function App({ initialAgents }: AppProps) {
           ))}
         </div>
 
-        {/* Add tab button */}
-        <div className="border-t border-gray-700 p-2">
+        {/* Theme toggle + Add tab button */}
+        <div className="border-t border-gray-200 p-2 dark:border-gray-700">
+          <button
+            onClick={toggle}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            className="mb-1 w-full rounded-lg py-1 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+          >
+            {isDark ? "☀" : "☾"}
+          </button>
           <button
             onClick={addTab}
             aria-label="+"
-            className="w-full rounded-lg py-1 text-gray-400 hover:bg-gray-700 hover:text-white"
+            className="w-full rounded-lg py-1 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
           >
             +
           </button>
