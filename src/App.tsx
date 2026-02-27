@@ -67,6 +67,9 @@ function App({ initialAgents }: AppProps) {
     .map((t) => t.session?.name ?? "")
     .filter(Boolean);
 
+  // Derive the shared topic from connected tabs (all tabs share the same topic prefix)
+  const sharedTopic = tabs.find((t) => t.session !== null)?.session?.topic ?? null;
+
   function addTab() {
     const tab = makeTab();
     setTabs((prev) => [...prev, tab]);
@@ -183,54 +186,68 @@ function App({ initialAgents }: AppProps) {
         </div>
       </nav>
 
-      {/* Content area — all tabs rendered simultaneously; inactive ones hidden */}
-      <div className="relative flex flex-1 overflow-hidden">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={tab.id === activeTabId ? "absolute inset-0 flex flex-col" : "hidden"}
-          >
-            {tab.session ? (
-              tab.session.model ? (
-                <BotChatView
-                  session={tab.session as BotHistoryEntry}
-                  onLeave={() => {
-                    const client = clientsRef.current.get(tab.id);
-                    if (client) {
-                      void client.disconnect();
-                      clientsRef.current.delete(tab.id);
-                    }
-                    setTabs((prev) =>
-                      prev.map((t) =>
-                        t.id === tab.id ? { ...t, session: null, client: null } : t,
-                      ),
-                    );
-                  }}
-                  client={tab.client ?? undefined}
-                />
+      {/* Main column: global header + content area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Global header — shared NATS topic */}
+        <header className="flex items-center border-b border-gray-200 px-4 py-2 dark:border-gray-700">
+          <span className="font-semibold text-gray-900 dark:text-white">SocialBot</span>
+          {sharedTopic && (
+            <>
+              <span className="mx-2 text-gray-400 dark:text-gray-500">·</span>
+              <span className="font-mono text-sm text-green-400">{sharedTopic}</span>
+            </>
+          )}
+        </header>
+
+        {/* Content area — all tabs rendered simultaneously; inactive ones hidden */}
+        <div className="relative flex flex-1 overflow-hidden">
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={tab.id === activeTabId ? "absolute inset-0 flex flex-col" : "hidden"}
+            >
+              {tab.session ? (
+                tab.session.model ? (
+                  <BotChatView
+                    session={tab.session as BotHistoryEntry}
+                    onLeave={() => {
+                      const client = clientsRef.current.get(tab.id);
+                      if (client) {
+                        void client.disconnect();
+                        clientsRef.current.delete(tab.id);
+                      }
+                      setTabs((prev) =>
+                        prev.map((t) =>
+                          t.id === tab.id ? { ...t, session: null, client: null } : t,
+                        ),
+                      );
+                    }}
+                    client={tab.client ?? undefined}
+                  />
+                ) : (
+                  <ChatView
+                    name={tab.session.name}
+                    topic={tab.session.topic}
+                    natsUrl={tab.session.natsUrl}
+                    isActive={tab.id === activeTabId}
+                    client={tab.client ?? undefined}
+                  />
+                )
               ) : (
-                <ChatView
-                  name={tab.session.name}
-                  topic={tab.session.topic}
-                  natsUrl={tab.session.natsUrl}
-                  isActive={tab.id === activeTabId}
-                  client={tab.client ?? undefined}
+                <UnifiedSettingsPanel
+                  takenNames={connectedNames}
+                  onConnect={(entry) => {
+                    void (async () => {
+                      const { NatsClient: NatsClientClass } = await import("./nats/NatsClient");
+                      const client = new NatsClientClass();
+                      handleConnect(tab.id, entry, client);
+                    })();
+                  }}
                 />
-              )
-            ) : (
-              <UnifiedSettingsPanel
-                takenNames={connectedNames}
-                onConnect={(entry) => {
-                  void (async () => {
-                    const { NatsClient: NatsClientClass } = await import("./nats/NatsClient");
-                    const client = new NatsClientClass();
-                    handleConnect(tab.id, entry, client);
-                  })();
-                }}
-              />
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

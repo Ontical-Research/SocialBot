@@ -72,15 +72,11 @@ function ChatView({
     }
   }, []);
 
-  // Set page title to topic.name when this tab is active
+  // Keep the document title as the app name
   useEffect(() => {
     if (!isActive) return;
-    const previousTitle = document.title;
-    document.title = `${topic}.${name}`;
-    return () => {
-      document.title = previousTitle;
-    };
-  }, [name, topic, isActive]);
+    document.title = "SocialBot";
+  }, [isActive]);
 
   useEffect(() => {
     // Lazily import NatsClient to avoid circular dependency issues in tests
@@ -126,13 +122,6 @@ function ChatView({
 
   return (
     <main className="flex h-full flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
-      {/* Header */}
-      <header className="flex items-center gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-        <span className="font-semibold text-gray-900 dark:text-white">{name}</span>
-        <span className="text-gray-500 dark:text-gray-400">→</span>
-        <span className="font-mono text-sm text-green-400">{topic}</span>
-      </header>
-
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {messages.map((msg) => {
