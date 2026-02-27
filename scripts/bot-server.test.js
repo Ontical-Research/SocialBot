@@ -21,6 +21,56 @@ vi.mock("./llm.js", () => ({
 // Import after mock is set up
 const { createApp } = await import("./bot-server.js");
 
+describe("GET /api/models", () => {
+  afterEach(() => {
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+  });
+
+  it("returns empty models array when no API keys are set", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    const app = createApp();
+    const res = await request(app).get("/api/models");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ models: [] });
+  });
+
+  it("returns Anthropic models when ANTHROPIC_API_KEY is set", async () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test";
+    delete process.env.OPENAI_API_KEY;
+    const app = createApp();
+    const res = await request(app).get("/api/models");
+    expect(res.status).toBe(200);
+    expect(res.body.models).toContain("claude-haiku-4-5-20251001");
+    expect(res.body.models).toContain("claude-sonnet-4-6");
+    expect(res.body.models).toContain("claude-opus-4-6");
+    expect(res.body.models.some((m) => m.startsWith("gpt"))).toBe(false);
+  });
+
+  it("returns OpenAI models when OPENAI_API_KEY is set", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.OPENAI_API_KEY = "sk-openai-test";
+    const app = createApp();
+    const res = await request(app).get("/api/models");
+    expect(res.status).toBe(200);
+    expect(res.body.models).toContain("gpt-4o");
+    expect(res.body.models).toContain("o3");
+    expect(res.body.models).toContain("o4-mini");
+    expect(res.body.models.some((m) => m.startsWith("claude"))).toBe(false);
+  });
+
+  it("returns combined models when both API keys are set", async () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test";
+    process.env.OPENAI_API_KEY = "sk-openai-test";
+    const app = createApp();
+    const res = await request(app).get("/api/models");
+    expect(res.status).toBe(200);
+    expect(res.body.models).toContain("claude-haiku-4-5-20251001");
+    expect(res.body.models).toContain("gpt-4o");
+  });
+});
+
 describe("GET /health", () => {
   it("returns { status: 'ok' }", async () => {
     const app = createApp();

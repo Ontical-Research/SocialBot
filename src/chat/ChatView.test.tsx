@@ -23,6 +23,27 @@ function trigger(msg: Parameters<MessageCallback>[0]): void {
   capturedCallback?.(msg);
 }
 
+function getInput(): HTMLInputElement {
+  return screen.getByPlaceholderText(/message/i);
+}
+
+/** Read the option values from the datalist associated with an input element. */
+function datalistValues(input: HTMLInputElement): (string | null)[] {
+  const listId = input.getAttribute("list") ?? "";
+  const options = document.getElementById(listId)?.querySelectorAll("option");
+  return Array.from(options ?? []).map((o) => o.getAttribute("value"));
+}
+
+/** Deliver a NATS message and wait for the given text to appear in the DOM. */
+async function deliver(sender: string, text: string): Promise<void> {
+  act(() => {
+    trigger({ sender, text, timestamp: new Date().toISOString() });
+  });
+  await waitFor(() => {
+    expect(screen.getByText(text)).toBeDefined();
+  });
+}
+
 describe("ChatView", () => {
   const originalTitle = document.title;
 
@@ -60,7 +81,7 @@ describe("ChatView", () => {
     });
   });
 
-  it("publishes message text when Send is clicked", async () => {
+  it("publishes message text when Send is clicked", () => {
     render(<ChatView name="Alice" topic="chat" />);
     const input = screen.getByPlaceholderText(/message/i);
     fireEvent.change(input, { target: { value: "Hello world" } });
@@ -79,24 +100,21 @@ describe("ChatView", () => {
 
   it("shows own message only after the NATS echo arrives", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     const input = screen.getByPlaceholderText(/message/i);
     fireEvent.change(input, { target: { value: "Echo message" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
     // Not visible yet — no echo
     expect(screen.queryByText("Echo message")).toBeNull();
     // Simulate the NATS server echoing the message back
-    act(() => {
-      trigger({ sender: "Alice", text: "Echo message", timestamp: new Date().toISOString() });
-    });
-    await waitFor(() => {
-      expect(screen.getByText("Echo message")).toBeDefined();
-    });
+    await deliver("Alice", "Echo message");
   });
 
   it("clears the input after sending", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    const input = getInput();
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
     expect(input.value).toBe("");
@@ -112,37 +130,30 @@ describe("ChatView", () => {
 
   it("displays incoming messages from NATS", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
-    act(() => {
-      trigger({ sender: "Bob", text: "Hi Alice!", timestamp: new Date().toISOString() });
-    });
     await waitFor(() => {
-      expect(screen.getByText("Hi Alice!")).toBeDefined();
+      expect(natsClient.connect).toHaveBeenCalled();
     });
+    await deliver("Bob", "Hi Alice!");
   });
 
   it("renders sender names in the message list", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
-    act(() => {
-      trigger({ sender: "Bob", text: "Hey there", timestamp: new Date().toISOString() });
-    });
     await waitFor(() => {
-      expect(screen.getByText("Bob")).toBeDefined();
+      expect(natsClient.connect).toHaveBeenCalled();
     });
+    await deliver("Bob", "Hey there");
+    expect(screen.getByText("Bob")).toBeDefined();
   });
 
   it("renders sender name with a color class", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
-    act(() => {
-      trigger({ sender: "Carol", text: "Color test", timestamp: new Date().toISOString() });
-    });
     await waitFor(() => {
-      const senderEl = screen.getByText("Carol");
-      // Should have one of the color classes
-      expect(senderEl.className).toMatch(/text-\w+-400/);
+      expect(natsClient.connect).toHaveBeenCalled();
     });
+    await deliver("Carol", "Color test");
+    const senderEl = screen.getByText("Carol");
+    // Should have one of the color classes
+    expect(senderEl.className).toMatch(/text-\w+-400/);
   });
 
   it("disconnects on unmount", async () => {
@@ -170,69 +181,53 @@ describe("ChatView", () => {
 
   it("own messages (matching name) are aligned to the right", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
-    act(() => {
-      trigger({ sender: "Alice", text: "My own message", timestamp: new Date().toISOString() });
-    });
     await waitFor(() => {
-      const msgEl = screen.getByText("My own message");
-      // The bubble wrapper should have an alignment class indicating self (right-aligned)
-      const bubble = msgEl.closest("[data-testid='message-bubble']");
-      expect(bubble).toBeDefined();
-      expect(bubble?.getAttribute("data-sender")).toBe("self");
+      expect(natsClient.connect).toHaveBeenCalled();
     });
+    await deliver("Alice", "My own message");
+    const bubble = screen.getByText("My own message").closest("[data-testid='message-bubble']");
+    expect(bubble).toBeDefined();
+    expect(bubble?.getAttribute("data-sender")).toBe("self");
   });
 
   it("other messages are aligned to the left", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
-    act(() => {
-      trigger({ sender: "Bob", text: "Bob's message", timestamp: new Date().toISOString() });
-    });
     await waitFor(() => {
-      const msgEl = screen.getByText("Bob's message");
-      const bubble = msgEl.closest("[data-testid='message-bubble']");
-      expect(bubble).toBeDefined();
-      expect(bubble?.getAttribute("data-sender")).toBe("other");
+      expect(natsClient.connect).toHaveBeenCalled();
     });
+    await deliver("Bob", "Bob's message");
+    const bubble = screen.getByText("Bob's message").closest("[data-testid='message-bubble']");
+    expect(bubble).toBeDefined();
+    expect(bubble?.getAttribute("data-sender")).toBe("other");
   });
 
   it("message input has a datalist for past sent messages", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i);
+    const input = getInput();
     const listId = input.getAttribute("list");
     expect(listId).toBeTruthy();
-    const datalist = document.getElementById(listId!);
+    const datalist = document.getElementById(listId ?? "");
     expect(datalist).toBeDefined();
     expect(datalist?.tagName).toBe("DATALIST");
   });
 
   it("sent messages appear in the past messages datalist", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    const input = getInput();
     fireEvent.change(input, { target: { value: "First message" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
-
-    const listId = input.getAttribute("list")!;
-    const datalist = document.getElementById(listId);
-    const options = datalist?.querySelectorAll("option");
-    const values = Array.from(options ?? []).map((o) => o.getAttribute("value"));
-    expect(values).toContain("First message");
+    expect(datalistValues(input)).toContain("First message");
   });
 
   it("deduplicates messages in the past messages datalist", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    const input = getInput();
 
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
-    const listId = input.getAttribute("list")!;
-    const datalist = document.getElementById(listId);
-    const options = datalist?.querySelectorAll("option");
-    const values = Array.from(options ?? []).map((o) => o.getAttribute("value"));
-    expect(values.filter((v) => v === "Hello").length).toBe(1);
+    expect(datalistValues(input).filter((v) => v === "Hello").length).toBe(1);
   });
 });

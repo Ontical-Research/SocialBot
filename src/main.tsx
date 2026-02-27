@@ -2,10 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
-import BotApp from "./BotApp.tsx";
 
-const isBotRoute = window.location.pathname.startsWith("/bot");
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>{isBotRoute ? <BotApp /> : <App />}</StrictMode>,
+const rootEl = document.getElementById("root");
+if (!rootEl) throw new Error("Root element not found");
+createRoot(rootEl).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
 );

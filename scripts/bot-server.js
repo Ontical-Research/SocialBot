@@ -9,8 +9,9 @@
  *   node scripts/bot-server.js
  *
  * Endpoints:
- *   GET  /health     → { status: "ok" }
- *   POST /api/chat   → { reply: string } | { error: string }
+ *   GET  /health        → { status: "ok" }
+ *   GET  /api/models    → { models: string[] }
+ *   POST /api/chat      → { reply: string } | { error: string }
  */
 
 import express from "express";
@@ -18,6 +19,9 @@ import { fileURLToPath } from "node:url";
 import { loadModel, buildMessages } from "./llm.js";
 
 const PORT = process.env.BOT_SERVER_PORT ?? 3001;
+
+const ANTHROPIC_MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"];
+const OPENAI_MODELS = ["gpt-4o", "o3", "o4-mini"];
 
 /**
  * Create and configure the Express application (exported for testing).
@@ -27,6 +31,14 @@ const PORT = process.env.BOT_SERVER_PORT ?? 3001;
 export function createApp() {
   const app = express();
   app.use(express.json());
+
+  /** Available models based on configured API keys */
+  app.get("/api/models", (_req, res) => {
+    const models = [];
+    if (process.env.ANTHROPIC_API_KEY) models.push(...ANTHROPIC_MODELS);
+    if (process.env.OPENAI_API_KEY) models.push(...OPENAI_MODELS);
+    res.json({ models });
+  });
 
   /** Health check */
   app.get("/health", (_req, res) => {

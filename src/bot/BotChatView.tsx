@@ -29,6 +29,7 @@ function BotChatView({ session, onLeave }: BotChatViewProps) {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [history, thinking]);
 
@@ -41,7 +42,9 @@ function BotChatView({ session, onLeave }: BotChatViewProps) {
         <span className="text-sm font-medium text-gray-200">{session.model}</span>
         <span className="text-gray-500">·</span>
         <button
-          onClick={() => setPromptModalOpen(true)}
+          onClick={() => {
+            setPromptModalOpen(true);
+          }}
           className="text-sm text-blue-400 hover:text-blue-300 hover:underline focus:outline-none"
         >
           {promptFilename}
@@ -124,16 +127,22 @@ function BotChatView({ session, onLeave }: BotChatViewProps) {
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setPromptModalOpen(false)}
+          onClick={() => {
+            setPromptModalOpen(false);
+          }}
         >
           <div
             className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-gray-800 p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-gray-100">{promptFilename}</h2>
               <button
-                onClick={() => setPromptModalOpen(false)}
+                onClick={() => {
+                  setPromptModalOpen(false);
+                }}
                 aria-label="Close"
                 className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
               >

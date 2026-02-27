@@ -11,7 +11,7 @@ const { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub, makeControllable
     /** Creates a fake Subscription that yields one message then stops. */
     function makeFakeSub(msgJson: string) {
       return {
-        [Symbol.asyncIterator]: async function* () {
+        [Symbol.asyncIterator]: function* () {
           yield { string: () => msgJson };
         },
         drain: vi.fn().mockResolvedValue(undefined),
@@ -26,9 +26,9 @@ const { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub, makeControllable
      */
     function makeControllableSub() {
       // A queue of resolve functions waiting for the next message
-      const resolvers: Array<(value: IteratorResult<{ string: () => string }>) => void> = [];
+      const resolvers: ((value: IteratorResult<{ string: () => string }>) => void)[] = [];
       // Pending messages not yet consumed by the iterator
-      const pending: Array<{ string: () => string }> = [];
+      const pending: { string: () => string }[] = [];
       let done = false;
 
       function push(msgJson: string) {

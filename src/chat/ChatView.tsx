@@ -33,7 +33,7 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
 
   const nextId = () => {
     counterRef.current += 1;
-    return `msg-${counterRef.current}`;
+    return `msg-${counterRef.current.toString()}`;
   };
 
   const appendMessage = useCallback((msg: NatsMessage) => {
@@ -58,6 +58,7 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 
@@ -132,7 +133,9 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
           <input
             type="text"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
             list="sent-history"

@@ -1,19 +1,29 @@
 import { useState } from "react";
 import "./App.css";
-import SettingsPanel from "./settings/SettingsPanel";
+import UnifiedSettingsPanel from "./settings/UnifiedSettingsPanel";
 import ChatView from "./chat/ChatView";
-import type { HistoryEntry } from "./settings/useSettingsHistory";
+import BotChatView from "./bot/BotChatView";
+import type { UnifiedEntry } from "./settings/useUnifiedSettingsHistory";
+import type { BotHistoryEntry } from "./bot/useBotSettingsHistory";
 
 function App() {
-  const [connection, setConnection] = useState<HistoryEntry | null>(null);
+  const [session, setSession] = useState<UnifiedEntry | null>(null);
 
-  if (connection) {
-    return (
-      <ChatView name={connection.name} topic={connection.topic} natsUrl={connection.natsUrl} />
-    );
+  if (session) {
+    if (session.model) {
+      return (
+        <BotChatView
+          session={session as BotHistoryEntry}
+          onLeave={() => {
+            setSession(null);
+          }}
+        />
+      );
+    }
+    return <ChatView name={session.name} topic={session.topic} natsUrl={session.natsUrl} />;
   }
 
-  return <SettingsPanel onConnect={setConnection} />;
+  return <UnifiedSettingsPanel onConnect={setSession} />;
 }
 
 export default App;

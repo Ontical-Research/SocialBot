@@ -11,8 +11,9 @@ const mockPublish = vi.fn();
 const mockDisconnect = vi.fn();
 
 vi.mock("../nats/client", () => ({
-  connect: (...args: unknown[]) => mockConnect(...args),
-  publish: (...args: unknown[]) => mockPublish(...args),
+  connect: (url: string, topic: string, name: string, onMessage: (msg: NatsMessage) => void) =>
+    mockConnect(url, topic, name, onMessage),
+  publish: (text: string) => mockPublish(text),
   disconnect: () => mockDisconnect(),
 }));
 
@@ -60,6 +61,23 @@ function makeErrorResponse(status: number, error: string) {
   };
 }
 
+/** Render the hook and wait for the initial NATS connection. */
+async function setup() {
+  const hook = renderHook(() => useBotSession(SESSION));
+  await waitFor(() => {
+    expect(mockConnect).toHaveBeenCalledTimes(1);
+  });
+  return hook;
+}
+
+/** Send a message via the captured callback. */
+function sendMessage(text: string, sender = "Alice", timestamp = "2024-01-01T00:00:00Z") {
+  const onMessage = captureOnMessage();
+  act(() => {
+    onMessage({ sender, text, timestamp });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -76,8 +94,7 @@ describe("useBotSession", () => {
   });
 
   it("connects to NATS on mount with the bot's name and topic", async () => {
-    renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    await setup();
 
     const [, topic, name] = mockConnect.mock.calls[0];
     expect(topic).toBe("chat");
@@ -85,53 +102,44 @@ describe("useBotSession", () => {
   });
 
   it("disconnects from NATS on unmount", async () => {
-    const { unmount } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    const { unmount } = await setup();
 
     unmount();
-    await waitFor(() => expect(mockDisconnect).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("starts with empty history and no error", async () => {
-    const { result } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    const { result } = await setup();
 
     expect(result.current.history).toEqual([]);
     expect(result.current.error).toBeNull();
   });
 
   it("appends incoming message to history as user role with sender name", async () => {
-    const { result } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    const { result } = await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hello Alice!"));
+    sendMessage("Hello Bob");
 
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "Hello Bob", timestamp: "2024-01-01T00:00:00Z" });
-    });
-
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.history).toContainEqual({
         role: "user",
         content: "Hello Bob",
         name: "Alice",
-      }),
-    );
+      });
+    });
   });
 
   it("calls POST /api/chat with history, system prompt, and model", async () => {
-    const { result } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hi there!"));
-
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "Hey", timestamp: "2024-01-01T00:00:00Z" });
+    sendMessage("Hey");
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
-
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/chat");
@@ -141,90 +149,71 @@ describe("useBotSession", () => {
     expect(body.model).toBe("claude-haiku-4-5");
     expect(body.systemPrompt).toBe("You are a friendly assistant named Bob.");
     expect(body.messages).toContainEqual({ role: "user", content: "Hey", name: "Alice" });
-    void result; // suppress unused warning
   });
 
   it("publishes the LLM reply to NATS", async () => {
-    renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hello Alice!"));
+    sendMessage("Hello Bob");
 
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "Hello Bob", timestamp: "2024-01-01T00:00:00Z" });
+    await waitFor(() => {
+      expect(mockPublish).toHaveBeenCalledTimes(1);
     });
-
-    await waitFor(() => expect(mockPublish).toHaveBeenCalledTimes(1));
     expect(mockPublish).toHaveBeenCalledWith("Hello Alice!");
   });
 
   it("appends the LLM reply to history as assistant role", async () => {
-    const { result } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    const { result } = await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hello Alice!"));
+    sendMessage("Hello Bob");
 
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "Hello Bob", timestamp: "2024-01-01T00:00:00Z" });
-    });
-
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.history).toContainEqual({
         role: "assistant",
         content: "Hello Alice!",
-      }),
-    );
+      });
+    });
   });
 
   it("does not call /api/chat when the sender is the bot itself", async () => {
-    renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    await setup();
 
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      // Message from "Bob" — the bot's own name
-      onMessage({ sender: "Bob", text: "Hello Alice!", timestamp: "2024-01-01T00:00:00Z" });
-    });
+    sendMessage("Hello Alice!", "Bob");
 
     // fetch should not have been called
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("sets error state when /api/chat returns an error and does not publish", async () => {
-    const { result } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    const { result } = await setup();
 
     mockFetch.mockResolvedValueOnce(makeErrorResponse(502, "LLM error"));
+    sendMessage("Hello");
 
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "Hello", timestamp: "2024-01-01T00:00:00Z" });
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
     });
-
-    await waitFor(() => expect(result.current.error).not.toBeNull());
     expect(result.current.error).toContain("LLM error");
     expect(mockPublish).not.toHaveBeenCalled();
   });
 
   it("clears error state when a subsequent message succeeds", async () => {
-    const { result } = renderHook(() => useBotSession(SESSION));
-    await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+    const { result } = await setup();
 
     // First message fails
     mockFetch.mockResolvedValueOnce(makeErrorResponse(502, "LLM error"));
-    const onMessage = captureOnMessage();
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "Hello", timestamp: "2024-01-01T00:00:00Z" });
+    sendMessage("Hello");
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
     });
-    await waitFor(() => expect(result.current.error).not.toBeNull());
 
     // Second message succeeds
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hi!"));
-    await act(async () => {
-      onMessage({ sender: "Alice", text: "World", timestamp: "2024-01-01T00:00:00Z" });
+    sendMessage("World");
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
     });
-    await waitFor(() => expect(result.current.error).toBeNull());
   });
 });

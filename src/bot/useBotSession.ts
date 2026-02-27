@@ -77,7 +77,7 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
         const data = (await response.json()) as { reply?: string; error?: string };
 
         if (!response.ok) {
-          setError(data.error ?? `Request failed with status ${response.status}`);
+          setError(data.error ?? `Request failed with status ${response.status.toString()}`);
           return;
         }
 
@@ -106,7 +106,9 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
   useEffect(() => {
     historyRef.current = [];
 
-    void connect("ws://localhost:9222", session.topic, session.name, handleMessage);
+    void connect("ws://localhost:9222", session.topic, session.name, (msg) => {
+      void handleMessage(msg);
+    });
 
     return () => {
       void disconnect();
