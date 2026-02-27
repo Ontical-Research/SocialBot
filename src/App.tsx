@@ -178,20 +178,23 @@ function App({ initialAgents }: AppProps) {
                     </div>
                   </div>
                 ) : (
-                  tabs.length > 1 && (
                     <button
                       onClick={() => {
                         requestRemoveTab(tab.id);
                       }}
+                      disabled={tabs.length <= 1}
                       aria-label="Remove tab"
-                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-danger group-hover:opacity-100 dark:text-dark-text-tertiary dark:hover:text-dark-danger"
+                      className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-0.5 text-text-tertiary transition-opacity hover:text-danger dark:text-dark-text-tertiary dark:hover:text-dark-danger ${
+                        tabs.length <= 1
+                          ? "cursor-not-allowed opacity-0"
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
                     </button>
-                  )
                 )}
               </div>
             );

@@ -124,7 +124,7 @@ describe("App", () => {
   it("shows a '+' button to add a new tab", async () => {
     render(<App />);
     await screen.findByRole("button", { name: /connect/i });
-    expect(screen.getByRole("button", { name: /\+/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /add new agent tab/i })).toBeDefined();
   });
 
   it("adds a new tab when '+' is clicked", async () => {
@@ -132,7 +132,7 @@ describe("App", () => {
     render(<App />);
     await screen.findByRole("button", { name: /connect/i });
 
-    const addButton = screen.getByRole("button", { name: /\+/ });
+    const addButton = screen.getByRole("button", { name: /add new agent tab/i });
     await user.click(addButton);
 
     // Should now have two "New agent" tabs in the tab strip
@@ -144,7 +144,7 @@ describe("App", () => {
     render(<App />);
     await screen.findByRole("button", { name: /connect/i });
     // There should be a remove/close button in the tab strip
-    expect(screen.getByRole("button", { name: /remove tab|×/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /remove tab/i })).toBeDefined();
   });
 
   it("shows confirmation before removing a tab", async () => {
@@ -153,14 +153,14 @@ describe("App", () => {
     render(<App />);
     await screen.findByRole("button", { name: /connect/i });
 
-    await user.click(screen.getByRole("button", { name: /\+/ }));
+    await user.click(screen.getByRole("button", { name: /add new agent tab/i }));
 
     // Click the remove button on the first tab
-    const removeButtons = screen.getAllByRole("button", { name: /remove tab|×/i });
+    const removeButtons = screen.getAllByRole("button", { name: /remove tab/i });
     await user.click(removeButtons[0]);
 
     // Should show a confirmation
-    expect(screen.getByText(/confirm/i)).toBeDefined();
+    expect(screen.getByText(/remove\?/i)).toBeDefined();
   });
 
   it("does not remove the last remaining tab", async () => {
@@ -168,7 +168,7 @@ describe("App", () => {
     await screen.findByRole("button", { name: /connect/i });
 
     // There's only one tab — its remove button should be disabled or hidden
-    const removeButton = screen.getByRole("button", { name: /remove tab|×/i });
+    const removeButton = screen.getByRole("button", { name: /remove tab/i });
     expect(removeButton.hasAttribute("disabled")).toBe(true);
   });
 
@@ -181,7 +181,7 @@ describe("App", () => {
     await connectAlice(user);
 
     // Add a second tab
-    await user.click(screen.getByRole("button", { name: /\+/ }));
+    await user.click(screen.getByRole("button", { name: /add new agent tab/i }));
 
     // Try to connect as Alice again
     const nameInputs = screen.getAllByLabelText(/name/i);
@@ -265,7 +265,7 @@ describe("App", () => {
     await connectAlice(user);
 
     // Add second tab (switches active tab away from Alice)
-    await user.click(screen.getByRole("button", { name: /\+/ }));
+    await user.click(screen.getByRole("button", { name: /add new agent tab/i }));
 
     // Switch back to Alice's tab via the tab strip button
     const aliceTabButton = screen.getAllByRole("button", { name: "Alice" })[0];
@@ -305,7 +305,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
     // Add a second tab (switches active tab away from Alice)
-    await user.click(screen.getByRole("button", { name: /\+/ }));
+    await user.click(screen.getByRole("button", { name: /add new agent tab/i }));
 
     // Switch back to Alice via the tab strip button
     const aliceTabButton = screen.getAllByRole("button", { name: "Alice" })[0];
