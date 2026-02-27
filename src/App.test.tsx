@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
@@ -229,5 +229,98 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: /connect/i })).toBeNull();
     });
+  });
+
+  it("bot tab NatsClient connects even when its tab is not active", async () => {
+    const { NatsClient: MockNatsClient } = await import("./nats/NatsClient");
+    const MockCtor = MockNatsClient as ReturnType<typeof vi.fn>;
+    MockCtor.mockClear();
+
+    const agents: UnifiedEntry[] = [
+      {
+        name: "Alice",
+        topic: "chat",
+        natsUrl: "ws://localhost:9222",
+        model: "",
+        promptPath: "",
+        promptContent: "",
+      },
+      {
+        name: "Bob",
+        topic: "chat",
+        natsUrl: "ws://localhost:9222",
+        model: "claude-haiku-4-5-20251001",
+        promptPath: "p.md",
+        promptContent: "Be helpful.",
+      },
+    ];
+
+    render(<App initialAgents={agents} />);
+
+    // Alice's tab is active by default. Both Alice's ChatView and Bob's BotChatView
+    // must mount and each create a NatsClient, even though Bob's tab is not active.
+    await waitFor(() => {
+      // At least 2 constructor calls: one for Alice's ChatView, one for Bob's useBotSession
+      expect(MockCtor.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("preserves ChatView messages when switching away and back", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Connect tab 1 as Alice
+    await user.type(await screen.findByLabelText(/name/i), "Alice");
+    await user.type(screen.getByLabelText(/topic/i), "chat");
+    await user.click(screen.getByRole("button", { name: /connect/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/chat/i)).toBeDefined();
+    });
+
+    // Add second tab (switches active tab away from Alice)
+    await user.click(screen.getByRole("button", { name: /\+/ }));
+
+    // Switch back to Alice's tab via the tab strip button
+    const aliceTabButton = screen.getAllByRole("button", { name: "Alice" })[0];
+    await user.click(aliceTabButton);
+
+    // Alice's chat area (topic header) should still be visible.
+    // (The hidden "New agent" tab still has a Connect button in the DOM but it is not visible.)
+    expect(screen.getByText(/chat/i)).toBeDefined();
+    // Alice's name should appear in the chat header (the <span> inside main)
+    const chatHeader = document.querySelector("main header span");
+    expect(chatHeader?.textContent).toBe("Alice");
+  });
+
+  it("preserves sent-message datalist when switching tabs and back", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Connect as Alice
+    await user.type(await screen.findByLabelText(/name/i), "Alice");
+    await user.type(screen.getByLabelText(/topic/i), "chat");
+    await user.click(screen.getByRole("button", { name: /connect/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/chat/i)).toBeDefined();
+    });
+
+    // Send a message so it lands in sentHistory datalist
+    const input = screen.getByPlaceholderText(/message/i);
+    fireEvent.change(input, { target: { value: "Hello world" } });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    // Add a second tab (switches active tab away from Alice)
+    await user.click(screen.getByRole("button", { name: /\+/ }));
+
+    // Switch back to Alice via the tab strip button
+    const aliceTabButton = screen.getAllByRole("button", { name: "Alice" })[0];
+    await user.click(aliceTabButton);
+
+    // Sent history datalist should still contain "Hello world"
+    const aliceInput = screen.getByPlaceholderText(/message/i);
+    const listId = aliceInput.getAttribute("list") ?? "";
+    const options = document.getElementById(listId)?.querySelectorAll("option");
+    const values = Array.from(options ?? []).map((o) => o.getAttribute("value"));
+    expect(values).toContain("Hello world");
   });
 });

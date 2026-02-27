@@ -100,7 +100,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white">
+    <main className="flex h-full flex-col items-center justify-center overflow-y-auto bg-gray-900 text-white">
       <div className="w-full max-w-sm rounded-xl bg-gray-800 p-8 shadow-lg">
         <h1 className="mb-6 text-center text-2xl font-bold">SocialBot</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

@@ -1,0 +1,6 @@
+nats_url: ws://localhost:9222
+agents:
+  - name: Alice
+    topic: chat
+  - name: Bob
+    topic: chat
