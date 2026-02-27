@@ -171,7 +171,7 @@ function App({ initialAgents }: AppProps) {
         <div className="border-t border-gray-200 p-2 dark:border-gray-700">
           {sharedTopic && (
             <div
-              className="mb-1 truncate px-1 font-mono text-xs text-green-400"
+              className="mb-1 truncate px-1 text-center font-mono text-xs text-green-400"
               title={sharedTopic}
             >
               {sharedTopic}
