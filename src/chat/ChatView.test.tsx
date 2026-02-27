@@ -61,6 +61,13 @@ function deliverWaiting(sender: string): void {
   });
 }
 
+/** Deliver a "cancel" NATS message from the given sender. */
+function deliverCancel(sender: string): void {
+  act(() => {
+    trigger({ sender, text: "", timestamp: new Date().toISOString(), type: "cancel" });
+  });
+}
+
 describe("ChatView", () => {
   const originalTitle = document.title;
 
@@ -291,6 +298,33 @@ describe("ChatView", () => {
       await deliver("Bob", "Bob's reply");
       expect(screen.getByText("Hello everyone")).toBeDefined();
       expect(screen.getByText("Bob's reply")).toBeDefined();
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+    });
+
+    it("cancel message removes the typing-indicator", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+      deliverCancel("Bob");
+      await waitFor(() => {
+        expect(screen.queryByTestId("typing-indicator")).toBeNull();
+      });
+    });
+
+    it("cancel with no prior waiting slot is a no-op", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      await deliver("Carol", "A message");
+      deliverCancel("Bob");
+      // No crash and no changes to existing messages
+      expect(screen.getByText("A message")).toBeDefined();
       expect(screen.queryByTestId("typing-indicator")).toBeNull();
     });
 

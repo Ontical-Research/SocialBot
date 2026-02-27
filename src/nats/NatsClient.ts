@@ -6,7 +6,7 @@ import type { NatsConnection, Subscription } from "nats.ws";
 // ---------------------------------------------------------------------------
 
 /** Discriminates a normal chat message from a "bot is thinking" placeholder. */
-export type MessageType = "message" | "waiting";
+export type MessageType = "message" | "waiting" | "cancel";
 
 /** The JSON wire-format for every message exchanged on the NATS bus. */
 export interface NatsMessage {
@@ -117,6 +117,28 @@ export class NatsClient {
       text: "",
       timestamp: new Date().toISOString(),
       type: "waiting",
+    };
+
+    this.nc.publish(this.currentTopic, this.sc.encode(JSON.stringify(message)));
+  }
+
+  /**
+   * Publish a "cancel" sentinel to the common topic, signalling that this
+   * client's pending LLM call has failed and the waiting indicator should be
+   * dismissed by all participants.
+   *
+   * :raises Error: If ``connect`` has not been called yet.
+   */
+  publishCancel(): void {
+    if (!this.nc) {
+      throw new Error("Not connected – call connect() first");
+    }
+
+    const message: NatsMessage = {
+      sender: this.currentName,
+      text: "",
+      timestamp: new Date().toISOString(),
+      type: "cancel",
     };
 
     this.nc.publish(this.currentTopic, this.sc.encode(JSON.stringify(message)));

@@ -48,15 +48,16 @@ function ChatView({
   };
 
   const handleIncomingMessage = useCallback((msg: NatsMessage) => {
+    const waitingId = `waiting-${msg.sender}`;
     if (msg.type === "waiting") {
-      const waitingId = `waiting-${msg.sender}`;
       setMessages((prev) => {
         const exists = prev.some((m) => m.id === waitingId);
         if (exists) return prev;
         return [...prev, { ...msg, id: waitingId }];
       });
+    } else if (msg.type === "cancel") {
+      setMessages((prev) => prev.filter((m) => m.id !== waitingId));
     } else {
-      const waitingId = `waiting-${msg.sender}`;
       setMessages((prev) => {
         const idx = prev.findIndex((m) => m.id === waitingId);
         if (idx !== -1) {
