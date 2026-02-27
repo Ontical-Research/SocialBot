@@ -73,6 +73,7 @@ export function loadModel(modelString) {
  * @returns {import('@langchain/core/messages').BaseMessage[]}
  */
 export function buildMessages(systemPrompt, messages) {
+  /** @type {(SystemMessage | HumanMessage | AIMessage)[]} */
   const result = [new SystemMessage(systemPrompt)];
 
   for (const msg of messages) {

@@ -71,7 +71,8 @@ vite.stdout.on("data", (chunk) => {
 
 vite.on("error", (err) => {
   // If local binary not found, retry with npx
-  if (err.code === "ENOENT") {
+  const nodeErr = /** @type {NodeJS.ErrnoException} */ (err);
+  if (nodeErr.code === "ENOENT") {
     const fallback = spawn("npx", ["vite"], {
       cwd: projectRoot,
       stdio: ["inherit", "pipe", "inherit"],
