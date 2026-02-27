@@ -25,9 +25,7 @@ const { mockSubscribe, mockPublish, mockDrainConn, makeFakeSub, makeControllable
      * iterator.  Returns ``{ sub, push, close }``.
      */
     function makeControllableSub() {
-      // A queue of resolve functions waiting for the next message
       const resolvers: ((value: IteratorResult<{ string: () => string }>) => void)[] = [];
-      // Pending messages not yet consumed by the iterator
       const pending: { string: () => string }[] = [];
       let done = false;
 
@@ -92,45 +90,53 @@ vi.mock("nats.ws", () => ({
 
 // --- Import after mock setup -------------------------------------------
 
-import { connect, disconnect, publish } from "./client";
-import type { NatsMessage } from "./client";
+import { NatsClient } from "./NatsClient";
+import type { NatsMessage } from "./NatsClient";
 
 // --- Tests -------------------------------------------------------------
 
-describe("NATS client", () => {
+describe("NatsClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSubscribe.mockReturnValue(makeFakeSub("{}"));
-    // Re-mock drain after clearAllMocks
     mockDrainConn.mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
-    await disconnect();
+    // Clean up any leftover instances — nothing to do as each test creates its own
   });
 
   describe("connect()", () => {
     it("subscribes to the common topic", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
 
       const subjects = mockSubscribe.mock.calls.map((c) => c[0] as string);
       expect(subjects).toContain("chat");
+
+      await client.disconnect();
     });
 
     it("subscribes to the direct topic", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
 
       const subjects = mockSubscribe.mock.calls.map((c) => c[0] as string);
       expect(subjects).toContain("chat.Alice");
+
+      await client.disconnect();
     });
 
     it("accepts the onMessage callback as a required fourth argument", async () => {
+      const client = new NatsClient();
       const cb = vi.fn();
-      // Should not throw
-      await expect(connect("ws://localhost:9222", "chat", "Alice", cb)).resolves.toBeUndefined();
+      await expect(
+        client.connect("ws://localhost:9222", "chat", "Alice", cb),
+      ).resolves.toBeUndefined();
+      await client.disconnect();
     });
 
-    it("invokes the callback for incoming messages passed at connect time", async () => {
+    it("invokes the callback for incoming messages", async () => {
       const received: NatsMessage[] = [];
       const cb = (msg: NatsMessage) => received.push(msg);
 
@@ -141,42 +147,38 @@ describe("NATS client", () => {
       };
       mockSubscribe.mockReturnValue(makeFakeSub(JSON.stringify(payload)));
 
-      await connect("ws://localhost:9222", "chat", "Alice", cb);
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", cb);
 
-      // Allow the async iterators to drain
       await new Promise((r) => setTimeout(r, 20));
 
       expect(received.length).toBeGreaterThan(0);
       expect(received[0].sender).toBe("Bob");
       expect(received[0].text).toBe("hi");
+
+      await client.disconnect();
     });
 
     it("does not invoke callback from a stale loop after reconnect", async () => {
-      // Build controllable subs for the *first* connect() (common + direct)
       const stale1 = makeControllableSub();
       const stale2 = makeControllableSub();
-
-      // First connect() uses the stale subs; second uses never-yielding subs
       const fresh1 = makeControllableSub();
       const fresh2 = makeControllableSub();
 
       mockSubscribe
-        .mockReturnValueOnce(stale1.sub) // first connect, common sub
-        .mockReturnValueOnce(stale2.sub) // first connect, direct sub
-        .mockReturnValueOnce(fresh1.sub) // second connect, common sub
-        .mockReturnValueOnce(fresh2.sub); // second connect, direct sub
+        .mockReturnValueOnce(stale1.sub)
+        .mockReturnValueOnce(stale2.sub)
+        .mockReturnValueOnce(fresh1.sub)
+        .mockReturnValueOnce(fresh2.sub);
 
       const staleCallback = vi.fn();
       const freshCallback = vi.fn();
 
-      // First connect — loops start but are blocked waiting for messages
-      await connect("ws://localhost:9222", "chat", "Alice", staleCallback);
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", staleCallback);
+      await client.disconnect();
+      await client.connect("ws://localhost:9222", "chat", "Alice", freshCallback);
 
-      // Simulate StrictMode remount: disconnect then reconnect
-      await disconnect();
-      await connect("ws://localhost:9222", "chat", "Alice", freshCallback);
-
-      // Push a message into the *old* stale subs — generation is now stale
       const payload: NatsMessage = {
         sender: "Bob",
         text: "stale message",
@@ -185,33 +187,90 @@ describe("NATS client", () => {
       stale1.push(JSON.stringify(payload));
       stale2.push(JSON.stringify(payload));
 
-      // Allow loops to process
       await new Promise((r) => setTimeout(r, 20));
 
-      // Stale callback must NOT be called — generation mismatch aborts the loops
       expect(staleCallback).not.toHaveBeenCalled();
-      // Fresh callback must also not be called — no messages pushed to fresh subs
       expect(freshCallback).not.toHaveBeenCalled();
 
       stale1.close();
       stale2.close();
       fresh1.close();
       fresh2.close();
+
+      await client.disconnect();
+    });
+  });
+
+  describe("two instances", () => {
+    it("two instances can connect simultaneously with separate callbacks", async () => {
+      const received1: NatsMessage[] = [];
+      const received2: NatsMessage[] = [];
+
+      const msg1: NatsMessage = {
+        sender: "Alice",
+        text: "hello from 1",
+        timestamp: new Date().toISOString(),
+      };
+      const msg2: NatsMessage = {
+        sender: "Bob",
+        text: "hello from 2",
+        timestamp: new Date().toISOString(),
+      };
+
+      // Each instance gets its own controllable subs
+      const ctrl1a = makeControllableSub();
+      const ctrl1b = makeControllableSub();
+      const ctrl2a = makeControllableSub();
+      const ctrl2b = makeControllableSub();
+
+      mockSubscribe
+        .mockReturnValueOnce(ctrl1a.sub)
+        .mockReturnValueOnce(ctrl1b.sub)
+        .mockReturnValueOnce(ctrl2a.sub)
+        .mockReturnValueOnce(ctrl2b.sub);
+
+      const client1 = new NatsClient();
+      const client2 = new NatsClient();
+
+      await client1.connect("ws://localhost:9222", "chat", "Alice", (m) => received1.push(m));
+      await client2.connect("ws://localhost:9222", "chat", "Bob", (m) => received2.push(m));
+
+      ctrl1a.push(JSON.stringify(msg1));
+      ctrl2a.push(JSON.stringify(msg2));
+
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(received1).toHaveLength(1);
+      expect(received1[0].text).toBe("hello from 1");
+      expect(received2).toHaveLength(1);
+      expect(received2[0].text).toBe("hello from 2");
+
+      ctrl1a.close();
+      ctrl1b.close();
+      ctrl2a.close();
+      ctrl2b.close();
+
+      await client1.disconnect();
+      await client2.disconnect();
     });
   });
 
   describe("publish()", () => {
     it("publishes to the common topic", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      publish("hello");
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      client.publish("hello");
 
       expect(mockPublish).toHaveBeenCalledOnce();
       expect(mockPublish.mock.calls[0][0]).toBe("chat");
+
+      await client.disconnect();
     });
 
     it("sends the correct JSON wire format", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      publish("hello");
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      client.publish("hello");
 
       const rawPayload = mockPublish.mock.calls[0][1] as Uint8Array;
       const decoded = new TextDecoder().decode(rawPayload);
@@ -220,17 +279,31 @@ describe("NATS client", () => {
       expect(parsed.sender).toBe("Alice");
       expect(parsed.text).toBe("hello");
       expect(typeof parsed.timestamp).toBe("string");
-      // Timestamp should be a valid ISO-8601 date
       expect(() => new Date(parsed.timestamp)).not.toThrow();
+
+      await client.disconnect();
+    });
+
+    it("throws if not connected", () => {
+      const client = new NatsClient();
+      expect(() => {
+        client.publish("hello");
+      }).toThrow("Not connected");
     });
   });
 
   describe("disconnect()", () => {
     it("drains the connection", async () => {
-      await connect("ws://localhost:9222", "chat", "Alice", vi.fn());
-      await disconnect();
+      const client = new NatsClient();
+      await client.connect("ws://localhost:9222", "chat", "Alice", vi.fn());
+      await client.disconnect();
 
       expect(mockDrainConn).toHaveBeenCalledOnce();
+    });
+
+    it("is safe to call when not connected", async () => {
+      const client = new NatsClient();
+      await expect(client.disconnect()).resolves.toBeUndefined();
     });
   });
 });

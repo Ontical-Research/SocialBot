@@ -7,6 +7,8 @@ const BROWSE_SENTINEL = "__browse__";
 interface UnifiedSettingsPanelProps {
   /** Called when the user submits the form with a valid entry. */
   onConnect: (entry: UnifiedEntry) => void;
+  /** Names already in use by connected tabs; duplicate names are rejected. */
+  takenNames?: string[];
 }
 
 /**
@@ -17,7 +19,7 @@ interface UnifiedSettingsPanelProps {
  *   previously used prompt from history, or choose "Browse…" to load a new
  *   file from disk.
  */
-function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
+function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPanelProps) {
   const { history, modelHistory, promptHistory, addEntry } = useUnifiedSettingsHistory();
   const availableModels = useAvailableModels(modelHistory);
 
@@ -40,7 +42,9 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
   const promptReady =
     isBotMode && selectedPromptPath !== "" && selectedPromptPath !== BROWSE_SENTINEL;
 
-  const canConnect = name.trim() !== "" && topic.trim() !== "" && (!isBotMode || promptReady);
+  const isNameTaken = takenNames.includes(name.trim());
+  const canConnect =
+    name.trim() !== "" && topic.trim() !== "" && (!isBotMode || promptReady) && !isNameTaken;
 
   function handleModelChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedModel(e.target.value);
@@ -123,6 +127,9 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
                 <option key={n} value={n} />
               ))}
             </datalist>
+            {isNameTaken && (
+              <p className="text-xs text-red-400">Name "{name}" is already in use.</p>
+            )}
           </div>
 
           {/* Topic */}

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { connect, publish, disconnect } from "../nats/client";
-import type { NatsMessage } from "../nats/client";
+import type { NatsClient, NatsMessage } from "../nats/NatsClient";
 import { senderColor } from "./senderColor";
 
 interface ChatViewProps {
   name: string;
   topic: string;
   natsUrl?: string;
+  /** Pre-constructed NatsClient instance; if omitted, one is created internally. */
+  client?: NatsClient;
 }
 
 interface Message extends NatsMessage {
@@ -23,13 +24,15 @@ function formatTime(iso: string): string {
  * :param name:    The local user's display name.
  * :param topic:   The NATS subject to publish and subscribe on.
  * :param natsUrl: WebSocket URL of the NATS server (default: ws://localhost:9222).
+ * :param client:  Optional pre-constructed NatsClient; created internally if omitted.
  */
-function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProps) {
+function ChatView({ name, topic, natsUrl = "ws://localhost:9222", client }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sentHistory, setSentHistory] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef(0);
+  const clientRef = useRef<NatsClient | null>(null);
 
   const nextId = () => {
     counterRef.current += 1;
@@ -50,24 +53,30 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222" }: ChatViewProp
   }, [name, topic]);
 
   useEffect(() => {
-    void connect(natsUrl, topic, name, appendMessage);
-    return () => {
-      void disconnect();
-    };
-  }, [name, topic, natsUrl, appendMessage]);
+    // Lazily import NatsClient to avoid circular dependency issues in tests
+    let activeClient: NatsClient;
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
-  }, [messages]);
+    if (client) {
+      activeClient = client;
+      clientRef.current = activeClient;
+      void activeClient.connect(natsUrl, topic, name, appendMessage);
+    } else {
+      void import("../nats/NatsClient").then(({ NatsClient: NatsClientClass }) => {
+        activeClient = new NatsClientClass();
+        clientRef.current = activeClient;
+        void activeClient.connect(natsUrl, topic, name, appendMessage);
+      });
+    }
+
+    return () => {
+      void clientRef.current?.disconnect();
+    };
+  }, [name, topic, natsUrl, appendMessage, client]);
 
   function handleSend() {
     const trimmed = text.trim();
     if (!trimmed) return;
-    // Let the NATS echo be the single source of truth — avoids duplicate messages.
-    publish(trimmed);
-    // Add to sent history (deduplicated, most recent first)
+    clientRef.current?.publish(trimmed);
     setSentHistory((prev) => {
       const filtered = prev.filter((m) => m !== trimmed);
       return [trimmed, ...filtered];
