@@ -100,16 +100,33 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
     onConnect(entry);
   }
 
+  const inputClass =
+    "w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder-text-tertiary transition-colors focus:border-accent focus:outline-none dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-primary dark:placeholder-dark-text-tertiary dark:focus:border-dark-accent";
+
+  const selectClass =
+    "w-full appearance-none rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary transition-colors focus:border-accent focus:outline-none dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-primary dark:focus:border-dark-accent";
+
   return (
-    <main className="flex h-full flex-col items-center justify-center overflow-y-auto bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
-      <div className="w-full max-w-sm rounded-xl bg-gray-100 p-8 shadow-lg dark:bg-gray-800">
-        <h1 className="mb-6 text-center text-2xl font-bold">SocialBot</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <main className="flex h-full flex-col items-center justify-center overflow-y-auto bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-lg font-bold text-white dark:bg-dark-accent">
+            S
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-text-primary dark:text-dark-text-primary">
+            Join a chat room
+          </h1>
+          <p className="mt-1 text-sm text-text-secondary dark:text-dark-text-secondary">
+            Enter your details to connect
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Name */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-name-input"
-              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
             >
               Name
             </label>
@@ -123,8 +140,8 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
                 setName(e.target.value);
               }}
               required
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              placeholder="Your name"
+              className={inputClass}
+              placeholder="Your display name"
             />
             <datalist id="unified-name-history">
               {nameOptions.map((n) => (
@@ -132,17 +149,17 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               ))}
             </datalist>
             {isNameTaken && (
-              <p className="text-xs text-red-500 dark:text-red-400">
-                Name "{name}" is already in use.
+              <p className="text-xs text-danger dark:text-dark-danger">
+                Name &ldquo;{name}&rdquo; is already in use.
               </p>
             )}
           </div>
 
           {/* Topic */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-topic-input"
-              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
             >
               Topic
             </label>
@@ -156,8 +173,8 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
                 setTopic(e.target.value);
               }}
               required
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              placeholder="NATS topic (e.g. chat.room1)"
+              className={inputClass}
+              placeholder="e.g. chat.room1"
             />
             <datalist id="unified-topic-history">
               {topicOptions.map((t) => (
@@ -167,10 +184,10 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           </div>
 
           {/* Model */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-model-select"
-              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
             >
               Model
             </label>
@@ -179,7 +196,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               aria-label="Model"
               value={selectedModel}
               onChange={handleModelChange}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              className={selectClass}
             >
               {availableModels.map((m) => (
                 <option key={m} value={m}>
@@ -190,10 +207,10 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           </div>
 
           {/* Prompt */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-prompt-select"
-              className="text-sm font-medium text-gray-600 dark:text-gray-300"
+              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
             >
               Prompt
             </label>
@@ -203,7 +220,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               value={selectedPromptPath}
               onChange={handlePromptChange}
               disabled={!isBotMode}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-40`}
             >
               <option value="">-- select prompt --</option>
               {promptHistory.map((p) => (
@@ -216,9 +233,8 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
                   {browsedPrompt.path}
                 </option>
               )}
-              <option value={BROWSE_SENTINEL}>Browse…</option>
+              <option value={BROWSE_SENTINEL}>{"Browse\u2026"}</option>
             </select>
-            {/* Hidden file input triggered by selecting "Browse…" */}
             <input
               ref={fileInputRef}
               type="file"
@@ -231,7 +247,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           <button
             type="submit"
             disabled={!canConnect}
-            className="mt-2 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-1 w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus:ring-2 focus:ring-accent/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-dark-accent/30"
           >
             Connect
           </button>
