@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .eslintcache
+.vite
+.claude/settings.local.json
 
 # Editor directories and files
 .vscode/*
