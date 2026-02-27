@@ -54,14 +54,6 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
         >
           {promptFilename}
         </button>
-        <span className="ml-auto">
-          <button
-            onClick={onLeave}
-            className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-          >
-            Leave chat
-          </button>
-        </span>
       </header>
 
       {/* Error banner */}
