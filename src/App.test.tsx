@@ -36,11 +36,21 @@ function mockFetch(config = {}, models: string[] = []) {
 }
 
 async function selectModelOption(user: ReturnType<typeof userEvent.setup>, modelValue: string) {
-  const select = await screen.findByLabelText(/model/i);
+  const select = await screen.findByLabelText<HTMLSelectElement>(/model/i);
   await waitFor(() => {
     expect(Array.from(select.options).map((o) => o.value)).toContain(modelValue);
   });
   await user.selectOptions(select, modelValue);
+}
+
+/** Types Alice's name + topic into the first visible form and clicks Connect. */
+async function connectAlice(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(await screen.findByLabelText(/name/i), "Alice");
+  await user.type(screen.getByLabelText(/topic/i), "chat");
+  await user.click(screen.getByRole("button", { name: /connect/i }));
+  await waitFor(() => {
+    expect(screen.getByText(/chat/i)).toBeDefined();
+  });
 }
 
 const defaultConfig = { natsUrl: "ws://localhost:9222", agents: [] };
@@ -73,23 +83,9 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await screen.findByLabelText(/model/i);
+    await connectAlice(user);
 
-    await user.type(screen.getByLabelText(/name/i), "Alice");
-    await user.type(screen.getByLabelText(/topic/i), "chat.room1");
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: () => Promise.resolve({ models: [] }),
-      } as Response),
-    );
-
-    await user.click(screen.getByRole("button", { name: /connect/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/chat\.room1/i)).toBeDefined();
-    });
+    expect(screen.queryByRole("button", { name: /connect/i })).toBeNull();
   });
 
   it("bot path: renders BotChatView after connecting with a model and prompt", async () => {
@@ -182,12 +178,7 @@ describe("App", () => {
     await screen.findByLabelText(/model/i);
 
     // Connect the first tab as Alice
-    await user.type(screen.getByLabelText(/name/i), "Alice");
-    await user.type(screen.getByLabelText(/topic/i), "chat");
-    await user.click(screen.getByRole("button", { name: /connect/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/chat/i)).toBeDefined();
-    });
+    await connectAlice(user);
 
     // Add a second tab
     await user.click(screen.getByRole("button", { name: /\+/ }));
@@ -271,13 +262,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    // Connect tab 1 as Alice
-    await user.type(await screen.findByLabelText(/name/i), "Alice");
-    await user.type(screen.getByLabelText(/topic/i), "chat");
-    await user.click(screen.getByRole("button", { name: /connect/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/chat/i)).toBeDefined();
-    });
+    await connectAlice(user);
 
     // Add second tab (switches active tab away from Alice)
     await user.click(screen.getByRole("button", { name: /\+/ }));
@@ -314,13 +299,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    // Connect as Alice
-    await user.type(await screen.findByLabelText(/name/i), "Alice");
-    await user.type(screen.getByLabelText(/topic/i), "chat");
-    await user.click(screen.getByRole("button", { name: /connect/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/chat/i)).toBeDefined();
-    });
+    await connectAlice(user);
 
     // Send a message so it lands in sentHistory datalist
     const input = screen.getByPlaceholderText(/message/i);
