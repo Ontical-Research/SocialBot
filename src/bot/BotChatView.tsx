@@ -39,7 +39,7 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
   const promptFilename = basename(session.promptPath);
 
   return (
-    <main className="flex h-screen flex-col bg-gray-900 text-white">
+    <main className="flex h-full flex-col bg-gray-900 text-white">
       {/* Status bar */}
       <header className="flex items-center gap-3 border-b border-gray-700 px-4 py-3">
         <span className="text-sm font-medium text-gray-200">{session.model}</span>

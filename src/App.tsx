@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import "./App.css";
 import UnifiedSettingsPanel from "./settings/UnifiedSettingsPanel";
 import ChatView from "./chat/ChatView";
@@ -57,43 +57,13 @@ function App({ initialAgents }: AppProps) {
   const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
-  // Track NatsClient instances in a ref so they can be created once and cleaned up
+  // Track NatsClient instances in a ref so they can be cleaned up on tab removal
   const clientsRef = useRef<Map<string, NatsClient>>(new Map());
-
-  // Create NatsClient instances for pre-populated tabs on mount
-  useEffect(() => {
-    if (!initialAgents || initialAgents.length === 0) return;
-    void (async () => {
-      const { NatsClient: NatsClientClass } = await import("./nats/NatsClient");
-      setTabs((prev) =>
-        prev.map((tab) => {
-          if (tab.session && !tab.client) {
-            const client = new NatsClientClass();
-            clientsRef.current.set(tab.id, client);
-            return { ...tab, client };
-          }
-          return tab;
-        }),
-      );
-    })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Cleanup all clients on unmount
-  useEffect(() => {
-    const clients = clientsRef.current;
-    return () => {
-      for (const client of clients.values()) {
-        void client.disconnect();
-      }
-    };
-  }, []);
 
   const connectedNames = tabs
     .filter((t) => t.session !== null)
     .map((t) => t.session?.name ?? "")
     .filter(Boolean);
-
-  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
   function addTab() {
     const tab = makeTab();
@@ -204,46 +174,54 @@ function App({ initialAgents }: AppProps) {
         </div>
       </nav>
 
-      {/* Content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {activeTab.session ? (
-          activeTab.session.model ? (
-            <BotChatView
-              session={activeTab.session as BotHistoryEntry}
-              onLeave={() => {
-                const client = clientsRef.current.get(activeTab.id);
-                if (client) {
-                  void client.disconnect();
-                  clientsRef.current.delete(activeTab.id);
-                }
-                setTabs((prev) =>
-                  prev.map((t) =>
-                    t.id === activeTab.id ? { ...t, session: null, client: null } : t,
-                  ),
-                );
-              }}
-              client={activeTab.client ?? undefined}
-            />
-          ) : (
-            <ChatView
-              name={activeTab.session.name}
-              topic={activeTab.session.topic}
-              natsUrl={activeTab.session.natsUrl}
-              client={activeTab.client ?? undefined}
-            />
-          )
-        ) : (
-          <UnifiedSettingsPanel
-            takenNames={connectedNames}
-            onConnect={(entry) => {
-              void (async () => {
-                const { NatsClient: NatsClientClass } = await import("./nats/NatsClient");
-                const client = new NatsClientClass();
-                handleConnect(activeTab.id, entry, client);
-              })();
-            }}
-          />
-        )}
+      {/* Content area — all tabs rendered simultaneously; inactive ones hidden */}
+      <div className="relative flex flex-1 overflow-hidden">
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            className={tab.id === activeTabId ? "absolute inset-0 flex flex-col" : "hidden"}
+          >
+            {tab.session ? (
+              tab.session.model ? (
+                <BotChatView
+                  session={tab.session as BotHistoryEntry}
+                  onLeave={() => {
+                    const client = clientsRef.current.get(tab.id);
+                    if (client) {
+                      void client.disconnect();
+                      clientsRef.current.delete(tab.id);
+                    }
+                    setTabs((prev) =>
+                      prev.map((t) =>
+                        t.id === tab.id ? { ...t, session: null, client: null } : t,
+                      ),
+                    );
+                  }}
+                  client={tab.client ?? undefined}
+                />
+              ) : (
+                <ChatView
+                  name={tab.session.name}
+                  topic={tab.session.topic}
+                  natsUrl={tab.session.natsUrl}
+                  isActive={tab.id === activeTabId}
+                  client={tab.client ?? undefined}
+                />
+              )
+            ) : (
+              <UnifiedSettingsPanel
+                takenNames={connectedNames}
+                onConnect={(entry) => {
+                  void (async () => {
+                    const { NatsClient: NatsClientClass } = await import("./nats/NatsClient");
+                    const client = new NatsClientClass();
+                    handleConnect(tab.id, entry, client);
+                  })();
+                }}
+              />
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

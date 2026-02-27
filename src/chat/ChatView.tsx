@@ -8,6 +8,8 @@ interface ChatViewProps {
   natsUrl?: string;
   /** Pre-constructed NatsClient instance; if omitted, one is created internally. */
   client?: NatsClient;
+  /** Whether this tab is currently visible; gates the document.title update. */
+  isActive?: boolean;
 }
 
 interface Message extends NatsMessage {
@@ -26,7 +28,13 @@ function formatTime(iso: string): string {
  * :param natsUrl: WebSocket URL of the NATS server (default: ws://localhost:9222).
  * :param client:  Optional pre-constructed NatsClient; created internally if omitted.
  */
-function ChatView({ name, topic, natsUrl = "ws://localhost:9222", client }: ChatViewProps) {
+function ChatView({
+  name,
+  topic,
+  natsUrl = "ws://localhost:9222",
+  client,
+  isActive,
+}: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sentHistory, setSentHistory] = useState<string[]>([]);
@@ -43,14 +51,15 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222", client }: Chat
     setMessages((prev) => [...prev, { ...msg, id: nextId() }]);
   }, []);
 
-  // Set page title to topic.name and restore on unmount
+  // Set page title to topic.name when this tab is active
   useEffect(() => {
+    if (!isActive) return;
     const previousTitle = document.title;
     document.title = `${topic}.${name}`;
     return () => {
       document.title = previousTitle;
     };
-  }, [name, topic]);
+  }, [name, topic, isActive]);
 
   useEffect(() => {
     // Lazily import NatsClient to avoid circular dependency issues in tests
@@ -91,7 +100,7 @@ function ChatView({ name, topic, natsUrl = "ws://localhost:9222", client }: Chat
   }
 
   return (
-    <main className="flex h-screen flex-col bg-gray-900 text-white">
+    <main className="flex h-full flex-col bg-gray-900 text-white">
       {/* Header */}
       <header className="flex items-center gap-3 border-b border-gray-700 px-4 py-3">
         <span className="font-semibold text-white">{name}</span>
