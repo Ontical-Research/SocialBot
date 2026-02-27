@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { connect, publish, disconnect } from "../nats/client";
-import type { NatsMessage } from "../nats/client";
+import type { NatsClient, NatsMessage } from "../nats/NatsClient";
 import type { BotHistoryEntry } from "./useBotSettingsHistory";
 
 // ---------------------------------------------------------------------------
@@ -34,20 +33,19 @@ const PROXY_URL = "/api/chat";
  * reply is published back to NATS and appended to the conversation history.
  *
  * :param session: The bot's login settings (name, topic, model, prompt).
+ * :param client:  Pre-constructed NatsClient instance; created internally if omitted.
  * :returns: The conversation history and any current API error.
  */
-export function useBotSession(session: BotHistoryEntry): BotSessionResult {
+export function useBotSession(session: BotHistoryEntry, client?: NatsClient): BotSessionResult {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
 
-  // Use a ref so the message handler always has the latest history without
-  // needing to be re-created (and without re-subscribing to NATS).
   const historyRef = useRef<ChatMessage[]>([]);
+  const clientRef = useRef<NatsClient | null>(null);
 
   const handleMessage = useCallback(
     async (msg: NatsMessage) => {
-      // Ignore messages sent by the bot itself to prevent self-response loops.
       if (msg.sender === session.name) return;
 
       const userMessage: ChatMessage = {
@@ -56,12 +54,10 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
         name: msg.sender,
       };
 
-      // Append the incoming message to history.
       const updatedHistory = [...historyRef.current, userMessage];
       historyRef.current = updatedHistory;
       setHistory(updatedHistory);
 
-      // Call the LLM proxy.
       setThinking(true);
       try {
         const response = await fetch(PROXY_URL, {
@@ -82,14 +78,10 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
         }
 
         const reply = data.reply ?? "";
-
-        // Clear any previous error.
         setError(null);
 
-        // Publish the reply to NATS.
-        publish(reply);
+        clientRef.current?.publish(reply);
 
-        // Append the assistant reply to history.
         const assistantMessage: ChatMessage = { role: "assistant", content: reply };
         const withReply = [...historyRef.current, assistantMessage];
         historyRef.current = withReply;
@@ -106,14 +98,30 @@ export function useBotSession(session: BotHistoryEntry): BotSessionResult {
   useEffect(() => {
     historyRef.current = [];
 
-    void connect("ws://localhost:9222", session.topic, session.name, (msg) => {
-      void handleMessage(msg);
-    });
+    const connectClient = async () => {
+      let activeClient: NatsClient;
+      if (client) {
+        activeClient = client;
+      } else {
+        const { NatsClient: NatsClientClass } = await import("../nats/NatsClient");
+        activeClient = new NatsClientClass();
+      }
+      clientRef.current = activeClient;
+      const natsUrl: string =
+        "natsUrl" in session && typeof session.natsUrl === "string"
+          ? session.natsUrl
+          : "ws://localhost:9222";
+      await activeClient.connect(natsUrl, session.topic, session.name, (msg) => {
+        void handleMessage(msg);
+      });
+    };
+
+    void connectClient();
 
     return () => {
-      void disconnect();
+      void clientRef.current?.disconnect();
     };
-  }, [session.topic, session.name, handleMessage]);
+  }, [session, handleMessage, client]);
 
   return { history, error, thinking };
 }

@@ -56,9 +56,10 @@ async function setupHumanForm(
   onConnect: () => void = () => {},
   name = "Alice",
   topic = "chat.room1",
+  takenNames: string[] = [],
 ) {
   const user = userEvent.setup();
-  render(<UnifiedSettingsPanel onConnect={onConnect} />);
+  render(<UnifiedSettingsPanel onConnect={onConnect} takenNames={takenNames} />);
   await screen.findByLabelText(/model/i);
   await user.type(screen.getByLabelText(/name/i), name);
   await user.type(screen.getByLabelText(/topic/i), topic);
@@ -209,6 +210,30 @@ describe("UnifiedSettingsPanel — bot mode submit", () => {
     const newEntry = stored.find((e: { name: string }) => e.name === "NewBot");
     expect(newEntry).toBeDefined();
     expect(newEntry.model).toBe("claude-haiku-4-5-20251001");
+  });
+});
+
+describe("UnifiedSettingsPanel — takenNames", () => {
+  it("Connect is disabled when name is in takenNames", async () => {
+    await setupHumanForm(() => {}, "Alice", "chat.room1", ["Alice"]);
+    expect(getButton(/connect/i).disabled).toBe(true);
+  });
+
+  it("shows an error message when name is already in use", async () => {
+    await setupHumanForm(() => {}, "Alice", "chat.room1", ["Alice"]);
+    expect(screen.getByText(/already in use/i)).toBeDefined();
+  });
+
+  it("Connect is enabled when name is not in takenNames", async () => {
+    await setupHumanForm(() => {}, "Alice", "chat.room1", ["Bob"]);
+    expect(getButton(/connect/i).disabled).toBe(false);
+  });
+
+  it("does not call onConnect when name is taken", async () => {
+    const onConnect = vi.fn();
+    const user = await setupHumanForm(onConnect, "Alice", "chat.room1", ["Alice"]);
+    await user.click(screen.getByRole("button", { name: /connect/i }));
+    expect(onConnect).not.toHaveBeenCalled();
   });
 });
 

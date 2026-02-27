@@ -1,0 +1,8 @@
+nats_url: ws://localhost:9222
+agents:
+  - name: Alice
+    topic: chat
+  - name: Bob
+    topic: chat
+    model: claude-haiku-4-5-20251001
+    prompt: prompts/friendly.md

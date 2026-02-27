@@ -65,9 +65,21 @@ npm start
 This starts the Express proxy server on port 3001 and the Vite dev server, then opens
 `http://localhost:5173/` in your browser automatically.
 
+## Multi-Agent Tabs
+
+SocialBot runs multiple agents in a single browser window. A vertical tab strip on the
+left side lists all active agents. Each tab is independent — it has its own NATS connection
+and message history.
+
+- **Add a tab** — click the **+** button at the bottom of the tab strip.
+- **Remove a tab** — click the **×** button on the tab, then confirm. The last tab cannot
+  be removed.
+- **Duplicate names** — two connected agents cannot share the same name. The Connect button
+  is disabled and an error is shown if you try.
+
 ## Using the Login Page
 
-The unified login page handles both human chat and bot mode in a single form:
+Each new tab opens a login form with four fields:
 
 | Field  | Human mode         | Bot mode                         |
 | ------ | ------------------ | -------------------------------- |
@@ -84,33 +96,48 @@ The unified login page handles both human chat and bot mode in a single form:
 Name and topic selections are remembered across sessions. Previously used models and prompts
 appear in their respective dropdowns for quick re-selection.
 
-## Chatting as Alice and Bob
+## YAML Config Files
 
-With the NATS broker and app running, open two browser tabs at `http://localhost:5173/`.
+Pass a YAML file to `npm start` to pre-populate agents at startup, skipping the login form:
 
-**Tab 1 — Alice:** Enter **Name:** `Alice`, **Topic:** `chat`, **Model:** `None`, click **Connect**.
+```bash
+npm start -- demo.yaml
+npm start -- my-agents.yaml
+```
 
-**Tab 2 — Bob:** Enter **Name:** `Bob`, **Topic:** `chat`, **Model:** `None`, click **Connect**.
+### YAML schema
 
-Messages sent in either tab appear instantly in both. Any name and topic can be used;
-participants on the same topic see each other's messages.
+```yaml
+nats_url: ws://localhost:9222 # optional, defaults to ws://localhost:9222
+agents:
+  - name: Alice
+    topic: chat
+  - name: Bob
+    topic: chat
+    model: claude-haiku-4-5-20251001
+    prompt: prompts/friendly.md # path relative to project root, or absolute
+```
 
-## Running the Bot
+The `model` and `prompt` fields are optional. Omitting them puts the agent in human mode.
 
-To add an AI participant, set an LLM API key (see step 3 above), then open a new browser
-tab at `http://localhost:5173/`.
+## Running the Alice + Bob Demo
 
-**Example — Bob as a Claude bot:**
+`demo.yaml` (included in the repo) launches Alice as a human and Bob as a Claude bot, both
+on the `chat` topic, in a single browser window:
 
-- **Name:** `Bob`
-- **Topic:** `chat`
-- **Model:** `claude-haiku-4-5-20251001`
-- **Prompt:** Browse to `prompts/friendly.md` in the repo root (or any `.md`/`.txt` file)
+```bash
+npm start -- demo.yaml
+```
 
-Click **Connect**. Alice's messages appear in both windows, and Bob's LLM responses appear
-within a few seconds.
+Both agents appear as tabs immediately — no login form required.
 
-### Available models
+## Running Tests
+
+```bash
+npm test
+```
+
+## Available Models
 
 The **Model** dropdown is populated from the server based on which API keys are set:
 
@@ -122,12 +149,6 @@ The **Model** dropdown is populated from the server based on which API keys are 
 For the full list of Anthropic model names, see the
 [Anthropic models documentation](https://docs.anthropic.com/en/docs/about-claude/models).
 For OpenAI, see the [OpenAI models page](https://platform.openai.com/docs/models).
-
-## Running Tests
-
-```bash
-npm test
-```
 
 ## Deployment (GitHub Pages)
 
@@ -155,15 +176,15 @@ folder to GitHub Pages. The deployed URL is reported in the Actions UI under the
 
 ### Live demo usage
 
-> **Note:** The GitHub Pages demo shows the unified login page, but bot mode requires a
-> local `npm start` session with API keys set. For Alice + Bob bot sessions, follow the
-> [Running the Bot](#running-the-bot) instructions above.
+> **Note:** The GitHub Pages demo shows the login page, but bot mode requires a local
+> `npm start` session with API keys set. For Alice + Bob bot sessions, follow the
+> [Running the Alice + Bob Demo](#running-the-alice--bob-demo) instructions above.
 
-Open the published URL in two browser tabs. Make sure your local NATS server is running:
+Open the published URL. Make sure your local NATS server is running:
 
 ```bash
 docker compose up -d
 ```
 
-Then in each tab, enter a different name (e.g. `Alice` and `Bob`) with the same topic and
-**Model** set to `None`, then click **Connect**. Messages appear in both tabs in real time.
+Add agents via the **+** button, enter a name and topic, and click **Connect**.
+Messages appear in real time across all tabs on the same topic.

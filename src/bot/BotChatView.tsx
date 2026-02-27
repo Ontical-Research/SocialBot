@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useBotSession } from "./useBotSession";
 import type { BotHistoryEntry } from "./useBotSettingsHistory";
+import type { NatsClient } from "../nats/NatsClient";
 import { senderColor } from "../chat/senderColor";
 
 interface BotChatViewProps {
   session: BotHistoryEntry;
   onLeave: () => void;
+  /** Pre-constructed NatsClient instance; created internally if omitted. */
+  client?: NatsClient;
 }
 
 /** Returns just the filename portion of a path, e.g. "prompts/friendly.md" → "friendly.md". */
@@ -22,8 +25,8 @@ function basename(path: string): string {
  * :param session: The active bot login settings.
  * :param onLeave: Called when the user clicks "Leave chat".
  */
-function BotChatView({ session, onLeave }: BotChatViewProps) {
-  const { history, error, thinking } = useBotSession(session);
+function BotChatView({ session, onLeave, client }: BotChatViewProps) {
+  const { history, error, thinking } = useBotSession(session, client);
   const [promptModalOpen, setPromptModalOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 

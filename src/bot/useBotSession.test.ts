@@ -1,21 +1,29 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { NatsMessage } from "../nats/client";
+import type { NatsClient, MessageCallback } from "../nats/NatsClient";
 
 // ---------------------------------------------------------------------------
-// Mock the NATS client module
+// Mock NatsClient factory
 // ---------------------------------------------------------------------------
 
-const mockConnect = vi.fn();
-const mockPublish = vi.fn();
-const mockDisconnect = vi.fn();
+let capturedCallback: MessageCallback | null = null;
+let mockConnect: ReturnType<typeof vi.fn>;
+let mockPublish: ReturnType<typeof vi.fn>;
+let mockDisconnect: ReturnType<typeof vi.fn>;
 
-vi.mock("../nats/client", () => ({
-  connect: (url: string, topic: string, name: string, onMessage: (msg: NatsMessage) => void) =>
-    mockConnect(url, topic, name, onMessage),
-  publish: (text: string) => mockPublish(text),
-  disconnect: () => mockDisconnect(),
-}));
+function makeMockClient(): NatsClient {
+  mockConnect = vi.fn((_url: string, _topic: string, _name: string, onMessage: MessageCallback) => {
+    capturedCallback = onMessage;
+    return Promise.resolve();
+  });
+  mockPublish = vi.fn();
+  mockDisconnect = vi.fn().mockResolvedValue(undefined);
+  return {
+    connect: mockConnect,
+    publish: mockPublish,
+    disconnect: mockDisconnect,
+  } as unknown as NatsClient;
+}
 
 // ---------------------------------------------------------------------------
 // Mock fetch
@@ -39,13 +47,6 @@ const SESSION: BotHistoryEntry = {
   promptContent: "You are a friendly assistant named Bob.",
 };
 
-/** Capture the onMessage callback that was passed to connect(). */
-function captureOnMessage(): (msg: NatsMessage) => void {
-  const call = mockConnect.mock.calls[0];
-  // connect(url, topic, name, onMessage)
-  return call[3] as (msg: NatsMessage) => void;
-}
-
 function makeChatResponse(reply: string) {
   return {
     ok: true,
@@ -61,9 +62,11 @@ function makeErrorResponse(status: number, error: string) {
   };
 }
 
-/** Render the hook and wait for the initial NATS connection. */
+let mockClient: NatsClient;
+
+/** Render the hook with a fresh mock client and wait for the initial NATS connection. */
 async function setup() {
-  const hook = renderHook(() => useBotSession(SESSION));
+  const hook = renderHook(() => useBotSession(SESSION, mockClient));
   await waitFor(() => {
     expect(mockConnect).toHaveBeenCalledTimes(1);
   });
@@ -72,9 +75,8 @@ async function setup() {
 
 /** Send a message via the captured callback. */
 function sendMessage(text: string, sender = "Alice", timestamp = "2024-01-01T00:00:00Z") {
-  const onMessage = captureOnMessage();
   act(() => {
-    onMessage({ sender, text, timestamp });
+    capturedCallback?.({ sender, text, timestamp });
   });
 }
 
@@ -85,8 +87,9 @@ function sendMessage(text: string, sender = "Alice", timestamp = "2024-01-01T00:
 describe("useBotSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockConnect.mockResolvedValue(undefined);
-    mockDisconnect.mockResolvedValue(undefined);
+    capturedCallback = null;
+    mockClient = makeMockClient();
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ reply: "" }) });
   });
 
   afterEach(() => {
@@ -96,7 +99,7 @@ describe("useBotSession", () => {
   it("connects to NATS on mount with the bot's name and topic", async () => {
     await setup();
 
-    const [, topic, name] = mockConnect.mock.calls[0];
+    const [, topic, name] = mockConnect.mock.calls[0] as [string, string, string];
     expect(topic).toBe("chat");
     expect(name).toBe("Bob");
   });
@@ -182,7 +185,6 @@ describe("useBotSession", () => {
 
     sendMessage("Hello Alice!", "Bob");
 
-    // fetch should not have been called
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -202,14 +204,12 @@ describe("useBotSession", () => {
   it("clears error state when a subsequent message succeeds", async () => {
     const { result } = await setup();
 
-    // First message fails
     mockFetch.mockResolvedValueOnce(makeErrorResponse(502, "LLM error"));
     sendMessage("Hello");
     await waitFor(() => {
       expect(result.current.error).not.toBeNull();
     });
 
-    // Second message succeeds
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hi!"));
     sendMessage("World");
     await waitFor(() => {
