@@ -39,10 +39,12 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
   const promptFilename = basename(session.promptPath);
 
   return (
-    <main className="flex h-full flex-col bg-gray-900 text-white">
+    <main className="flex h-full flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
       {/* Status bar */}
-      <header className="flex items-center gap-3 border-b border-gray-700 px-4 py-3">
-        <span className="text-sm font-medium text-gray-200">{session.model}</span>
+      <header className="flex items-center gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          {session.model}
+        </span>
         <span className="text-gray-500">·</span>
         <button
           onClick={() => {
@@ -55,7 +57,7 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
         <span className="ml-auto">
           <button
             onClick={onLeave}
-            className="rounded bg-gray-700 px-3 py-1 text-sm hover:bg-gray-600"
+            className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
           >
             Leave chat
           </button>
@@ -66,12 +68,12 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-3 border-b border-red-700 bg-red-900/30 px-4 py-2 text-sm text-red-300"
+          className="flex items-center gap-3 border-b border-red-300 bg-red-100 px-4 py-2 text-sm text-red-600 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
         >
           <span className="flex-1">{error}</span>
           <button
             onClick={onLeave}
-            className="rounded border border-red-600 px-2 py-1 text-xs hover:bg-red-900/50"
+            className="rounded border border-red-400 px-2 py-1 text-xs hover:bg-red-200 dark:border-red-600 dark:hover:bg-red-900/50"
           >
             Back to login
           </button>
@@ -92,7 +94,9 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
             >
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                  isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
+                  isSelf
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100"
                 }`}
               >
                 {!isSelf && (
@@ -111,11 +115,11 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
         {/* Typing indicator */}
         {thinking && (
           <div data-testid="typing-indicator" className="mb-3 flex justify-start">
-            <div className="rounded-2xl bg-gray-700 px-4 py-3">
+            <div className="rounded-2xl bg-gray-200 px-4 py-3 dark:bg-gray-700">
               <div className="flex gap-1">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:0ms] dark:bg-gray-400" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:150ms] dark:bg-gray-400" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:300ms] dark:bg-gray-400" />
               </div>
             </div>
           </div>
@@ -135,24 +139,26 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
           }}
         >
           <div
-            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-gray-800 p-6 shadow-xl"
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800"
             onClick={(e) => {
               e.stopPropagation();
             }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-100">{promptFilename}</h2>
+              <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                {promptFilename}
+              </h2>
               <button
                 onClick={() => {
                   setPromptModalOpen(false);
                 }}
                 aria-label="Close"
-                className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
+                className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
               >
                 ✕
               </button>
             </div>
-            <pre className="font-mono text-sm whitespace-pre-wrap text-gray-300">
+            <pre className="font-mono text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300">
               {session.promptContent}
             </pre>
           </div>

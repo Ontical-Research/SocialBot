@@ -100,11 +100,11 @@ function ChatView({
   }
 
   return (
-    <main className="flex h-full flex-col bg-gray-900 text-white">
+    <main className="flex h-full flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
       {/* Header */}
-      <header className="flex items-center gap-3 border-b border-gray-700 px-4 py-3">
-        <span className="font-semibold text-white">{name}</span>
-        <span className="text-gray-400">→</span>
+      <header className="flex items-center gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+        <span className="font-semibold text-gray-900 dark:text-white">{name}</span>
+        <span className="text-gray-500 dark:text-gray-400">→</span>
         <span className="font-mono text-sm text-green-400">{topic}</span>
       </header>
 
@@ -121,7 +121,9 @@ function ChatView({
             >
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                  isSelf ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
+                  isSelf
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100"
                 }`}
               >
                 {!isSelf && (
@@ -129,7 +131,9 @@ function ChatView({
                     <span className={`text-sm font-semibold ${senderColor(msg.sender)}`}>
                       {msg.sender}
                     </span>
-                    <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatTime(msg.timestamp)}
+                    </span>
                   </div>
                 )}
                 {isSelf && (
@@ -146,7 +150,7 @@ function ChatView({
       </div>
 
       {/* Send form */}
-      <div className="border-t border-gray-700 px-4 py-3">
+      <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
         <div className="flex gap-2">
           <input
             type="text"
@@ -157,7 +161,7 @@ function ChatView({
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
             list="sent-history"
-            className="flex-1 rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
           />
           <datalist id="sent-history">
             {sentHistory.map((msg) => (

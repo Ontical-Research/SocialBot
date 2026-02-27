@@ -5,8 +5,11 @@
  * with jsdom/happy-dom's in-memory implementation. We replace it with a simple
  * in-memory ``Storage`` shim before each test so that ``localStorage.clear()``,
  * ``setItem()``, ``getItem()``, and ``removeItem()`` work as expected.
+ *
+ * Also stubs ``window.matchMedia`` with a default (prefers light) implementation
+ * since jsdom does not provide one.
  */
-import { beforeEach } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 function createInMemoryStorage(): Storage {
   let store: Record<string, string> = {};
@@ -40,4 +43,12 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   });
+
+  // jsdom does not implement matchMedia. Provide a default stub (prefers light)
+  // that can be overridden per-test with vi.stubGlobal("matchMedia", ...).
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
 });
