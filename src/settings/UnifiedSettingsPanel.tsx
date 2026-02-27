@@ -65,7 +65,7 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const content = (ev.target?.result as string) ?? "";
+      const content = typeof ev.target?.result === "string" ? ev.target.result : "";
       setSelectedPromptPath(file.name);
       setPromptContent(content);
     };
@@ -74,7 +74,7 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
     e.target.value = "";
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!canConnect) return;
 
@@ -106,7 +106,9 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
               type="text"
               list="unified-name-history"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+              }}
               required
               className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
               placeholder="Your name"
@@ -129,7 +131,9 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
               type="text"
               list="unified-topic-history"
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={(e) => {
+                setTopic(e.target.value);
+              }}
               required
               className="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
               placeholder="NATS topic (e.g. chat.room1)"

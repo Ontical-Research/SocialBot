@@ -11,8 +11,9 @@ const mockPublish = vi.fn();
 const mockDisconnect = vi.fn();
 
 vi.mock("../nats/client", () => ({
-  connect: (...args: unknown[]) => mockConnect(...args),
-  publish: (...args: unknown[]) => mockPublish(...args),
+  connect: (url: string, topic: string, name: string, onMessage: (msg: NatsMessage) => void) =>
+    mockConnect(url, topic, name, onMessage),
+  publish: (text: string) => mockPublish(text),
   disconnect: () => mockDisconnect(),
 }));
 
@@ -63,14 +64,16 @@ function makeErrorResponse(status: number, error: string) {
 /** Render the hook and wait for the initial NATS connection. */
 async function setup() {
   const hook = renderHook(() => useBotSession(SESSION));
-  await waitFor(() => expect(mockConnect).toHaveBeenCalledTimes(1));
+  await waitFor(() => {
+    expect(mockConnect).toHaveBeenCalledTimes(1);
+  });
   return hook;
 }
 
 /** Send a message via the captured callback. */
-async function sendMessage(text: string, sender = "Alice", timestamp = "2024-01-01T00:00:00Z") {
+function sendMessage(text: string, sender = "Alice", timestamp = "2024-01-01T00:00:00Z") {
   const onMessage = captureOnMessage();
-  await act(async () => {
+  act(() => {
     onMessage({ sender, text, timestamp });
   });
 }
@@ -102,7 +105,9 @@ describe("useBotSession", () => {
     const { unmount } = await setup();
 
     unmount();
-    await waitFor(() => expect(mockDisconnect).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("starts with empty history and no error", async () => {
@@ -116,23 +121,25 @@ describe("useBotSession", () => {
     const { result } = await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hello Alice!"));
-    await sendMessage("Hello Bob");
+    sendMessage("Hello Bob");
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.history).toContainEqual({
         role: "user",
         content: "Hello Bob",
         name: "Alice",
-      }),
-    );
+      });
+    });
   });
 
   it("calls POST /api/chat with history, system prompt, and model", async () => {
     await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hi there!"));
-    await sendMessage("Hey");
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    sendMessage("Hey");
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
 
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/chat");
@@ -148,9 +155,11 @@ describe("useBotSession", () => {
     await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hello Alice!"));
-    await sendMessage("Hello Bob");
+    sendMessage("Hello Bob");
 
-    await waitFor(() => expect(mockPublish).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(mockPublish).toHaveBeenCalledTimes(1);
+    });
     expect(mockPublish).toHaveBeenCalledWith("Hello Alice!");
   });
 
@@ -158,20 +167,20 @@ describe("useBotSession", () => {
     const { result } = await setup();
 
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hello Alice!"));
-    await sendMessage("Hello Bob");
+    sendMessage("Hello Bob");
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.history).toContainEqual({
         role: "assistant",
         content: "Hello Alice!",
-      }),
-    );
+      });
+    });
   });
 
   it("does not call /api/chat when the sender is the bot itself", async () => {
     await setup();
 
-    await sendMessage("Hello Alice!", "Bob");
+    sendMessage("Hello Alice!", "Bob");
 
     // fetch should not have been called
     expect(mockFetch).not.toHaveBeenCalled();
@@ -181,9 +190,11 @@ describe("useBotSession", () => {
     const { result } = await setup();
 
     mockFetch.mockResolvedValueOnce(makeErrorResponse(502, "LLM error"));
-    await sendMessage("Hello");
+    sendMessage("Hello");
 
-    await waitFor(() => expect(result.current.error).not.toBeNull());
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
     expect(result.current.error).toContain("LLM error");
     expect(mockPublish).not.toHaveBeenCalled();
   });
@@ -193,12 +204,16 @@ describe("useBotSession", () => {
 
     // First message fails
     mockFetch.mockResolvedValueOnce(makeErrorResponse(502, "LLM error"));
-    await sendMessage("Hello");
-    await waitFor(() => expect(result.current.error).not.toBeNull());
+    sendMessage("Hello");
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
 
     // Second message succeeds
     mockFetch.mockResolvedValueOnce(makeChatResponse("Hi!"));
-    await sendMessage("World");
-    await waitFor(() => expect(result.current.error).toBeNull());
+    sendMessage("World");
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
+    });
   });
 });

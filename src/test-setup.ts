@@ -21,10 +21,11 @@ function createInMemoryStorage(): Storage {
       return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null;
     },
     setItem(key: string, value: string): void {
-      store[key] = String(value);
+      store[key] = value;
     },
     removeItem(key: string): void {
-      delete store[key];
+      const entries = Object.entries(store).filter(([k]) => k !== key);
+      store = Object.fromEntries(entries);
     },
     clear(): void {
       store = {};

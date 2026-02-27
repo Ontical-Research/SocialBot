@@ -17,10 +17,9 @@ function mockFetch(config = {}, models: string[] = []) {
 }
 
 async function selectModelOption(user: ReturnType<typeof userEvent.setup>, modelValue: string) {
-  const select = (await screen.findByLabelText(/model/i)) as HTMLSelectElement;
+  const select = await screen.findByLabelText(/model/i);
   await waitFor(() => {
-    const values = Array.from(select.options).map((o) => o.value);
-    expect(values).toContain(modelValue);
+    expect(Array.from(select.options).map((o) => o.value)).toContain(modelValue);
   });
   await user.selectOptions(select, modelValue);
 }
@@ -101,8 +100,7 @@ describe("App", () => {
 
     await selectModelOption(user, "claude-haiku-4-5-20251001");
 
-    const promptSelect = screen.getByLabelText(/prompt/i) as HTMLSelectElement;
-    await user.selectOptions(promptSelect, "prompts/friendly.md");
+    await user.selectOptions(screen.getByLabelText(/prompt/i), "prompts/friendly.md");
 
     await user.click(screen.getByRole("button", { name: /connect/i }));
 

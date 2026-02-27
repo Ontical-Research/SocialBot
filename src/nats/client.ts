@@ -23,8 +23,8 @@ export type MessageCallback = (msg: NatsMessage) => void;
 // ---------------------------------------------------------------------------
 
 let nc: NatsConnection | null = null;
-let currentTopic: string = "";
-let currentName: string = "";
+let currentTopic = "";
+let currentName = "";
 let subscriptions: Subscription[] = [];
 
 /**
@@ -34,7 +34,7 @@ let subscriptions: Subscription[] = [];
  * left over from a previous connection from delivering messages after a
  * reconnect (the React StrictMode double-mount scenario).
  */
-let currentGeneration: symbol = Symbol();
+let currentGeneration = Symbol();
 
 const sc = StringCodec();
 

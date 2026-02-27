@@ -11,7 +11,7 @@ import type { ChatMessage } from "./useBotSession";
 const mockUseBotSession = vi.fn();
 
 vi.mock("./useBotSession", () => ({
-  useBotSession: (...args: unknown[]) => mockUseBotSession(...args),
+  useBotSession: (session: BotHistoryEntry) => mockUseBotSession(session),
 }));
 
 // ---------------------------------------------------------------------------

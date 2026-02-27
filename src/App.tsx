@@ -11,7 +11,14 @@ function App() {
 
   if (session) {
     if (session.model) {
-      return <BotChatView session={session as BotHistoryEntry} onLeave={() => setSession(null)} />;
+      return (
+        <BotChatView
+          session={session as BotHistoryEntry}
+          onLeave={() => {
+            setSession(null);
+          }}
+        />
+      );
     }
     return <ChatView name={session.name} topic={session.topic} natsUrl={session.natsUrl} />;
   }

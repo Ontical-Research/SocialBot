@@ -23,9 +23,13 @@ function trigger(msg: Parameters<MessageCallback>[0]): void {
   capturedCallback?.(msg);
 }
 
+function getInput(): HTMLInputElement {
+  return screen.getByPlaceholderText(/message/i);
+}
+
 /** Read the option values from the datalist associated with an input element. */
 function datalistValues(input: HTMLInputElement): (string | null)[] {
-  const listId = input.getAttribute("list")!;
+  const listId = input.getAttribute("list") ?? "";
   const options = document.getElementById(listId)?.querySelectorAll("option");
   return Array.from(options ?? []).map((o) => o.getAttribute("value"));
 }
@@ -77,7 +81,7 @@ describe("ChatView", () => {
     });
   });
 
-  it("publishes message text when Send is clicked", async () => {
+  it("publishes message text when Send is clicked", () => {
     render(<ChatView name="Alice" topic="chat" />);
     const input = screen.getByPlaceholderText(/message/i);
     fireEvent.change(input, { target: { value: "Hello world" } });
@@ -96,7 +100,9 @@ describe("ChatView", () => {
 
   it("shows own message only after the NATS echo arrives", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     const input = screen.getByPlaceholderText(/message/i);
     fireEvent.change(input, { target: { value: "Echo message" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
@@ -108,7 +114,7 @@ describe("ChatView", () => {
 
   it("clears the input after sending", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    const input = getInput();
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
     expect(input.value).toBe("");
@@ -124,20 +130,26 @@ describe("ChatView", () => {
 
   it("displays incoming messages from NATS", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     await deliver("Bob", "Hi Alice!");
   });
 
   it("renders sender names in the message list", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     await deliver("Bob", "Hey there");
     expect(screen.getByText("Bob")).toBeDefined();
   });
 
   it("renders sender name with a color class", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     await deliver("Carol", "Color test");
     const senderEl = screen.getByText("Carol");
     // Should have one of the color classes
@@ -169,7 +181,9 @@ describe("ChatView", () => {
 
   it("own messages (matching name) are aligned to the right", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     await deliver("Alice", "My own message");
     const bubble = screen.getByText("My own message").closest("[data-testid='message-bubble']");
     expect(bubble).toBeDefined();
@@ -178,7 +192,9 @@ describe("ChatView", () => {
 
   it("other messages are aligned to the left", async () => {
     render(<ChatView name="Alice" topic="chat" />);
-    await waitFor(() => expect(natsClient.connect).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(natsClient.connect).toHaveBeenCalled();
+    });
     await deliver("Bob", "Bob's message");
     const bubble = screen.getByText("Bob's message").closest("[data-testid='message-bubble']");
     expect(bubble).toBeDefined();
@@ -187,17 +203,17 @@ describe("ChatView", () => {
 
   it("message input has a datalist for past sent messages", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i);
+    const input = getInput();
     const listId = input.getAttribute("list");
     expect(listId).toBeTruthy();
-    const datalist = document.getElementById(listId!);
+    const datalist = document.getElementById(listId ?? "");
     expect(datalist).toBeDefined();
     expect(datalist?.tagName).toBe("DATALIST");
   });
 
   it("sent messages appear in the past messages datalist", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    const input = getInput();
     fireEvent.change(input, { target: { value: "First message" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
     expect(datalistValues(input)).toContain("First message");
@@ -205,7 +221,7 @@ describe("ChatView", () => {
 
   it("deduplicates messages in the past messages datalist", () => {
     render(<ChatView name="Alice" topic="chat" />);
-    const input = screen.getByPlaceholderText(/message/i) as HTMLInputElement;
+    const input = getInput();
 
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));

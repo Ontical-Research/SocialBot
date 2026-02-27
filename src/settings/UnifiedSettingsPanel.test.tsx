@@ -3,6 +3,26 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UnifiedSettingsPanel from "./UnifiedSettingsPanel";
 
+// ---------------------------------------------------------------------------
+// Typed query helpers
+// ---------------------------------------------------------------------------
+
+function getSelect(label: RegExp): HTMLSelectElement {
+  return screen.getByLabelText(label);
+}
+
+async function findSelect(label: RegExp): Promise<HTMLSelectElement> {
+  return await screen.findByLabelText(label);
+}
+
+function getButton(name: RegExp): HTMLButtonElement {
+  return screen.getByRole("button", { name });
+}
+
+// ---------------------------------------------------------------------------
+// Test fixtures & helpers
+// ---------------------------------------------------------------------------
+
 function mockFetch(models: string[]) {
   vi.stubGlobal(
     "fetch",
@@ -23,7 +43,7 @@ const BOT_HISTORY_FIXTURE = JSON.stringify([
 ]);
 
 async function selectModel(user: ReturnType<typeof userEvent.setup>, modelValue: string) {
-  const select = (await screen.findByLabelText(/model/i)) as HTMLSelectElement;
+  const select = await findSelect(/model/i);
   await waitFor(() => {
     const values = Array.from(select.options).map((o) => o.value);
     expect(values).toContain(modelValue);
@@ -56,6 +76,10 @@ async function setupBotForm(onConnect: () => void = () => {}, name = "Bot", topi
   return user;
 }
 
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 beforeEach(() => {
   localStorage.clear();
   mockFetch([]);
@@ -82,15 +106,14 @@ describe("UnifiedSettingsPanel — rendering", () => {
 
   it("Model select has 'None' as first option", async () => {
     render(<UnifiedSettingsPanel onConnect={() => {}} />);
-    const select = await screen.findByLabelText(/model/i);
-    expect((select as HTMLSelectElement).options[0].value).toBe("None");
+    const select = await findSelect(/model/i);
+    expect(select.options[0].value).toBe("None");
   });
 
   it("Prompt select is disabled when model is 'None'", async () => {
     render(<UnifiedSettingsPanel onConnect={() => {}} />);
     await screen.findByLabelText(/model/i);
-    const promptSelect = screen.getByLabelText(/prompt/i) as HTMLSelectElement;
-    expect(promptSelect.disabled).toBe(true);
+    expect(getSelect(/prompt/i).disabled).toBe(true);
   });
 });
 
@@ -98,9 +121,9 @@ describe("UnifiedSettingsPanel — server models", () => {
   it("populates Model select with server models after fetch", async () => {
     mockFetch(["claude-haiku-4-5-20251001", "gpt-4o"]);
     render(<UnifiedSettingsPanel onConnect={() => {}} />);
-    const select = await screen.findByLabelText(/model/i);
+    const select = await findSelect(/model/i);
     await waitFor(() => {
-      const values = Array.from((select as HTMLSelectElement).options).map((o) => o.value);
+      const values = Array.from(select.options).map((o) => o.value);
       expect(values).toContain("claude-haiku-4-5-20251001");
       expect(values).toContain("gpt-4o");
     });
@@ -110,20 +133,17 @@ describe("UnifiedSettingsPanel — server models", () => {
 describe("UnifiedSettingsPanel — Connect button state", () => {
   it("Connect is disabled when name or topic is empty", () => {
     render(<UnifiedSettingsPanel onConnect={() => {}} />);
-    const btn = screen.getByRole("button", { name: /connect/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+    expect(getButton(/connect/i).disabled).toBe(true);
   });
 
   it("Connect is enabled when name + topic filled and model is None (human mode)", async () => {
     await setupHumanForm();
-    const btn = screen.getByRole("button", { name: /connect/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
+    expect(getButton(/connect/i).disabled).toBe(false);
   });
 
   it("Connect is disabled when model is set but no prompt selected", async () => {
     await setupBotForm();
-    const btn = screen.getByRole("button", { name: /connect/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+    expect(getButton(/connect/i).disabled).toBe(true);
   });
 });
 
@@ -156,13 +176,11 @@ describe("UnifiedSettingsPanel — bot mode submit", () => {
     localStorage.setItem("socialbot:bot-history", BOT_HISTORY_FIXTURE);
     const user = await setupBotForm();
 
-    const promptSelect = screen.getByLabelText(/prompt/i) as HTMLSelectElement;
+    const promptSelect = getSelect(/prompt/i);
     expect(promptSelect.disabled).toBe(false);
 
     await user.selectOptions(promptSelect, "prompts/friendly.md");
-
-    const btn = screen.getByRole("button", { name: /connect/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
+    expect(getButton(/connect/i).disabled).toBe(false);
   });
 
   it("calls onConnect with model and prompt in bot mode", async () => {
@@ -170,8 +188,7 @@ describe("UnifiedSettingsPanel — bot mode submit", () => {
     const onConnect = vi.fn();
     const user = await setupBotForm(onConnect);
 
-    const promptSelect = screen.getByLabelText(/prompt/i) as HTMLSelectElement;
-    await user.selectOptions(promptSelect, "prompts/friendly.md");
+    await user.selectOptions(getSelect(/prompt/i), "prompts/friendly.md");
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
     expect(onConnect).toHaveBeenCalledOnce();
@@ -185,8 +202,7 @@ describe("UnifiedSettingsPanel — bot mode submit", () => {
     localStorage.setItem("socialbot:bot-history", BOT_HISTORY_FIXTURE);
     const user = await setupBotForm(() => {}, "NewBot", "chat2");
 
-    const promptSelect = screen.getByLabelText(/prompt/i) as HTMLSelectElement;
-    await user.selectOptions(promptSelect, "prompts/friendly.md");
+    await user.selectOptions(getSelect(/prompt/i), "prompts/friendly.md");
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
     const stored = JSON.parse(localStorage.getItem("socialbot:bot-history") ?? "[]");
@@ -199,8 +215,7 @@ describe("UnifiedSettingsPanel — bot mode submit", () => {
 describe("UnifiedSettingsPanel — file browse", () => {
   it("shows a 'Browse...' option at the bottom of Prompt select when model is set", async () => {
     await setupBotForm();
-    const promptSelect = screen.getByLabelText(/prompt/i) as HTMLSelectElement;
-    const optionValues = Array.from(promptSelect.options).map((o) => o.value);
+    const optionValues = Array.from(getSelect(/prompt/i).options).map((o) => o.value);
     expect(optionValues).toContain("__browse__");
   });
 });

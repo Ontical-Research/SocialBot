@@ -13,8 +13,12 @@ export function useAvailableModels(modelHistory: string[]): string[] {
   useEffect(() => {
     fetch("/api/models")
       .then((r) => r.json())
-      .then((d: { models?: string[] }) => setServerModels(d.models ?? []))
-      .catch(() => {});
+      .then((d: { models?: string[] }) => {
+        setServerModels(d.models ?? []);
+      })
+      .catch(() => {
+        /* silently ignore network errors */
+      });
   }, []);
 
   const merged = ["None", ...serverModels];

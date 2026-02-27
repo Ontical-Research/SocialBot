@@ -112,7 +112,7 @@ interface UseUnifiedSettingsHistoryResult {
   /** Unique model strings from bot entries, most recent first, excluding empty. */
   modelHistory: string[];
   /** Unique prompt path+content pairs from bot entries. */
-  promptHistory: Array<{ promptPath: string; promptContent: string }>;
+  promptHistory: { promptPath: string; promptContent: string }[];
   /** Add a new entry; routes to the appropriate storage key based on model. */
   addEntry: (entry: UnifiedEntry) => void;
 }
@@ -141,7 +141,11 @@ export function useUnifiedSettingsHistory(): UseUnifiedSettingsHistoryResult {
 
   const seenPaths = new Set<string>();
   const promptHistory = history
-    .filter((e) => e.promptPath && !seenPaths.has(e.promptPath) && seenPaths.add(e.promptPath))
+    .filter((e) => {
+      if (!e.promptPath || seenPaths.has(e.promptPath)) return false;
+      seenPaths.add(e.promptPath);
+      return true;
+    })
     .map((e) => ({ promptPath: e.promptPath, promptContent: e.promptContent }));
 
   return { history, modelHistory, promptHistory, addEntry };
