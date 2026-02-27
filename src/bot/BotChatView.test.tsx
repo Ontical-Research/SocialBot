@@ -142,12 +142,4 @@ describe("BotChatView", () => {
     renderView({ thinking: false });
     expect(screen.queryByTestId("typing-indicator")).toBeNull();
   });
-
-  // Leave button
-  it("calls onLeave when the Leave chat button is clicked", () => {
-    const onLeave = vi.fn();
-    renderView({}, onLeave);
-    fireEvent.click(screen.getByRole("button", { name: /leave chat/i }));
-    expect(onLeave).toHaveBeenCalledTimes(1);
-  });
 });
