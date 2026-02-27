@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { NatsClient, NatsMessage } from "../nats/NatsClient";
 import { senderColor } from "./senderColor";
+import * as React from "react";
 
 interface ChatViewProps {
   name: string;
