@@ -11,6 +11,8 @@ let capturedCallback: MessageCallback | null = null;
 let mockConnect: ReturnType<typeof vi.fn>;
 let mockPublish: ReturnType<typeof vi.fn>;
 let mockDisconnect: ReturnType<typeof vi.fn>;
+let mockPublishWaiting: ReturnType<typeof vi.fn>;
+let mockPublishCancel: ReturnType<typeof vi.fn>;
 
 function makeMockClient(): NatsClient {
   mockConnect = vi.fn((_url: string, _topic: string, _name: string, onMessage: MessageCallback) => {
@@ -19,10 +21,14 @@ function makeMockClient(): NatsClient {
   });
   mockPublish = vi.fn();
   mockDisconnect = vi.fn().mockResolvedValue(undefined);
+  mockPublishWaiting = vi.fn();
+  mockPublishCancel = vi.fn();
   return {
     connect: mockConnect,
     publish: mockPublish,
     disconnect: mockDisconnect,
+    publishWaiting: mockPublishWaiting,
+    publishCancel: mockPublishCancel,
   } as unknown as NatsClient;
 }
 
@@ -343,6 +349,75 @@ describe("ChatView", () => {
       // First bubble contains the earlier message, second contains the indicator
       expect(bubbles[0].textContent).toContain("First message");
       expect(bubbles[1].querySelector("[data-testid='typing-indicator']")).toBeDefined();
+    });
+  });
+
+  describe("human typing indicator", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("calls publishWaiting after the first keystroke", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      expect(mockPublishWaiting).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not call publishWaiting again on subsequent keystrokes", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      fireEvent.change(input, { target: { value: "He" } });
+      fireEvent.change(input, { target: { value: "Hel" } });
+      expect(mockPublishWaiting).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls publishCancel after 3000 ms of idle", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      vi.useFakeTimers();
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      expect(mockPublishCancel).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(mockPublishCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears the debounce timer and does not call publishCancel when message is sent", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      vi.useFakeTimers();
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "Hello" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(mockPublishCancel).not.toHaveBeenCalled();
+    });
+
+    it("does not show own typing indicator locally after a keystroke", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      // publishWaiting is fire-and-forget; no waiting message enters the local list
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
     });
   });
 });

@@ -13,6 +13,8 @@ vi.mock("./nats/NatsClient", () => ({
     connect: vi.fn().mockResolvedValue(undefined),
     publish: vi.fn(),
     disconnect: vi.fn().mockResolvedValue(undefined),
+    publishWaiting: vi.fn(),
+    publishCancel: vi.fn(),
   })),
 }));
 

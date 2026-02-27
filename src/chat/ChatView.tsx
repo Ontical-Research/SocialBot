@@ -41,6 +41,7 @@ function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef(0);
   const clientRef = useRef<NatsClient | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nextId = () => {
     counterRef.current += 1;
@@ -104,6 +105,10 @@ function ChatView({
   function handleSend() {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (typingTimerRef.current !== null) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
     clientRef.current?.publish(trimmed);
     setSentHistory((prev) => {
       const filtered = prev.filter((m) => m !== trimmed);
@@ -183,7 +188,21 @@ function ChatView({
             type="text"
             value={text}
             onChange={(e) => {
-              setText(e.target.value);
+              const prev = text;
+              const next = e.target.value;
+              setText(next);
+              if (next.length > 0) {
+                if (prev.length === 0) {
+                  clientRef.current?.publishWaiting();
+                }
+                if (typingTimerRef.current !== null) {
+                  clearTimeout(typingTimerRef.current);
+                }
+                typingTimerRef.current = setTimeout(() => {
+                  typingTimerRef.current = null;
+                  clientRef.current?.publishCancel();
+                }, 3000);
+              }
             }}
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
