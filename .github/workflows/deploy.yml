@@ -5,17 +5,21 @@ on:
     branches:
       - "**"
 
+permissions:
+  pages: write
+  id-token: write
+
 jobs:
   preview:
     if: github.ref != 'refs/heads/main'
-    uses: ./.github/workflows/_build-and-deploy.yml
+    uses: ./.github/workflows/build-and-deploy.yml
     with:
-      environment: preview
-      preview: true
+      environment: Preview
+      job_name: Build and Deploy Preview
 
   production:
     if: github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/_build-and-deploy.yml
+    uses: ./.github/workflows/build-and-deploy.yml
     with:
-      environment: github-pages
-      preview: false
+      environment: Production
+      job_name: Build and Deploy to Production

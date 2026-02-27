@@ -6,14 +6,14 @@ on:
       environment:
         required: true
         type: string
-      preview:
+      job_name:
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: Build and Deploy
 
 jobs:
   deploy:
-    name: ${{ inputs.preview && 'Build and Deploy Preview' || 'Build and Deploy to GitHub Pages' }}
+    name: ${{ inputs.job_name }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -25,20 +25,23 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
       - run: node scripts/generate-config.js demo-pages.yaml
+        shell: bash
+
       - run: npm run build
+        shell: bash
         env:
           VITE_BASE_URL: /SocialBot/
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
       - id: deploy
         uses: actions/deploy-pages@v4
-        with:
-          preview: ${{ inputs.preview }}
