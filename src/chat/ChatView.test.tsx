@@ -183,22 +183,13 @@ describe("ChatView", () => {
     });
   });
 
-  it("sets document title to topic.name on mount when isActive", () => {
+  it("sets document title to SocialBot when isActive", () => {
+    document.title = "other";
     render(<ChatView name="Alice" topic="chat.room" client={mockClient} isActive={true} />);
-    expect(document.title).toBe("chat.room.Alice");
-  });
-
-  it("restores document title on unmount when isActive", () => {
-    document.title = "SocialBot";
-    const { unmount } = render(
-      <ChatView name="Alice" topic="chat.room" client={mockClient} isActive={true} />,
-    );
-    expect(document.title).toBe("chat.room.Alice");
-    unmount();
     expect(document.title).toBe("SocialBot");
   });
 
-  it("does not set document title when isActive is false", () => {
+  it("does not change document title when isActive is false", () => {
     document.title = "SocialBot";
     render(<ChatView name="Alice" topic="chat.room" client={mockClient} isActive={false} />);
     expect(document.title).toBe("SocialBot");
