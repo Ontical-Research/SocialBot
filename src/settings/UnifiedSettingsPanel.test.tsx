@@ -218,4 +218,22 @@ describe("UnifiedSettingsPanel — file browse", () => {
     const optionValues = Array.from(getSelect(/prompt/i).options).map((o) => o.value);
     expect(optionValues).toContain("__browse__");
   });
+
+  it("shows the browsed filename as a selected option after file is loaded", async () => {
+    const user = await setupBotForm();
+
+    // Simulate file selection via the hidden input
+    const fileInput = document.querySelector<HTMLInputElement>("input[type='file']");
+    expect(fileInput).toBeDefined();
+
+    const file = new File(["Be helpful."], "helpful.md", { type: "text/plain" });
+    await user.upload(fileInput!, file);
+
+    const select = getSelect(/prompt/i);
+    await waitFor(() => {
+      expect(select.value).toBe("helpful.md");
+    });
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toContain("helpful.md");
+  });
 });

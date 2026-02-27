@@ -27,6 +27,9 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
   const [selectedModel, setSelectedModel] = useState("None");
   const [selectedPromptPath, setSelectedPromptPath] = useState("");
   const [promptContent, setPromptContent] = useState("");
+  const [browsedPrompt, setBrowsedPrompt] = useState<{ path: string; content: string } | null>(
+    null,
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,6 +47,7 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
     // Reset prompt when model changes
     setSelectedPromptPath("");
     setPromptContent("");
+    setBrowsedPrompt(null);
   }
 
   function handlePromptChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -66,6 +70,7 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const content = typeof ev.target?.result === "string" ? ev.target.result : "";
+      setBrowsedPrompt({ path: file.name, content });
       setSelectedPromptPath(file.name);
       setPromptContent(content);
     };
@@ -184,6 +189,11 @@ function UnifiedSettingsPanel({ onConnect }: UnifiedSettingsPanelProps) {
                   {p.promptPath}
                 </option>
               ))}
+              {browsedPrompt && !promptHistory.some((p) => p.promptPath === browsedPrompt.path) && (
+                <option key={browsedPrompt.path} value={browsedPrompt.path}>
+                  {browsedPrompt.path}
+                </option>
+              )}
               <option value={BROWSE_SENTINEL}>Browse…</option>
             </select>
             {/* Hidden file input triggered by selecting "Browse…" */}
