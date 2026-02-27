@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useUnifiedSettingsHistory, type UnifiedEntry } from "./useUnifiedSettingsHistory";
 import { useAvailableModels } from "./useAvailableModels";
+import * as React from "react";
 
 const BROWSE_SENTINEL = "__browse__";
 
