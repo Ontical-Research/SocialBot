@@ -9,6 +9,8 @@ import type { NatsClient, MessageCallback } from "../nats/NatsClient";
 let capturedCallback: MessageCallback | null = null;
 let mockConnect: ReturnType<typeof vi.fn>;
 let mockPublish: ReturnType<typeof vi.fn>;
+let mockPublishWaiting: ReturnType<typeof vi.fn>;
+let mockPublishCancel: ReturnType<typeof vi.fn>;
 let mockDisconnect: ReturnType<typeof vi.fn>;
 
 function makeMockClient(): NatsClient {
@@ -17,10 +19,14 @@ function makeMockClient(): NatsClient {
     return Promise.resolve();
   });
   mockPublish = vi.fn();
+  mockPublishWaiting = vi.fn();
+  mockPublishCancel = vi.fn();
   mockDisconnect = vi.fn().mockResolvedValue(undefined);
   return {
     connect: mockConnect,
     publish: mockPublish,
+    publishWaiting: mockPublishWaiting,
+    publishCancel: mockPublishCancel,
     disconnect: mockDisconnect,
   } as unknown as NatsClient;
 }
@@ -215,5 +221,62 @@ describe("useBotSession", () => {
     await waitFor(() => {
       expect(result.current.error).toBeNull();
     });
+  });
+
+  it("calls publishWaiting() before fetch when a message arrives", async () => {
+    await setup();
+
+    let fetchCalled = false;
+    mockFetch.mockImplementationOnce(() => {
+      // At the moment fetch is called, publishWaiting should already have fired
+      fetchCalled = true;
+      return Promise.resolve(makeChatResponse("Hi!"));
+    });
+
+    sendMessage("Hello");
+
+    await waitFor(() => {
+      expect(fetchCalled).toBe(true);
+    });
+
+    expect(mockPublishWaiting).toHaveBeenCalledBefore(mockFetch);
+  });
+
+  it("calls publishWaiting() once per incoming message before publish(reply)", async () => {
+    await setup();
+
+    mockFetch.mockResolvedValueOnce(makeChatResponse("Reply 1"));
+    sendMessage("Msg 1");
+
+    await waitFor(() => {
+      expect(mockPublish).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockPublishWaiting).toHaveBeenCalledTimes(1);
+    expect(mockPublishWaiting).toHaveBeenCalledBefore(mockPublish);
+  });
+
+  it("calls publishCancel() when /api/chat returns an HTTP error", async () => {
+    await setup();
+
+    mockFetch.mockResolvedValueOnce(makeErrorResponse(502, "LLM error"));
+    sendMessage("Hello");
+
+    await waitFor(() => {
+      expect(mockPublishCancel).toHaveBeenCalledTimes(1);
+    });
+    expect(mockPublish).not.toHaveBeenCalled();
+  });
+
+  it("calls publishCancel() when fetch throws a network error", async () => {
+    await setup();
+
+    mockFetch.mockRejectedValueOnce(new Error("Network failure"));
+    sendMessage("Hello");
+
+    await waitFor(() => {
+      expect(mockPublishCancel).toHaveBeenCalledTimes(1);
+    });
+    expect(mockPublish).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,8 @@ let capturedCallback: MessageCallback | null = null;
 let mockConnect: ReturnType<typeof vi.fn>;
 let mockPublish: ReturnType<typeof vi.fn>;
 let mockDisconnect: ReturnType<typeof vi.fn>;
+let mockPublishWaiting: ReturnType<typeof vi.fn>;
+let mockPublishCancel: ReturnType<typeof vi.fn>;
 
 function makeMockClient(): NatsClient {
   mockConnect = vi.fn((_url: string, _topic: string, _name: string, onMessage: MessageCallback) => {
@@ -19,10 +21,14 @@ function makeMockClient(): NatsClient {
   });
   mockPublish = vi.fn();
   mockDisconnect = vi.fn().mockResolvedValue(undefined);
+  mockPublishWaiting = vi.fn();
+  mockPublishCancel = vi.fn();
   return {
     connect: mockConnect,
     publish: mockPublish,
     disconnect: mockDisconnect,
+    publishWaiting: mockPublishWaiting,
+    publishCancel: mockPublishCancel,
   } as unknown as NatsClient;
 }
 
@@ -51,6 +57,20 @@ async function deliver(sender: string, text: string): Promise<void> {
   });
   await waitFor(() => {
     expect(screen.getByText(text)).toBeDefined();
+  });
+}
+
+/** Deliver a "waiting" NATS message from the given sender. */
+function deliverWaiting(sender: string): void {
+  act(() => {
+    trigger({ sender, text: "", timestamp: new Date().toISOString(), type: "waiting" });
+  });
+}
+
+/** Deliver a "cancel" NATS message from the given sender. */
+function deliverCancel(sender: string): void {
+  act(() => {
+    trigger({ sender, text: "", timestamp: new Date().toISOString(), type: "cancel" });
   });
 }
 
@@ -234,5 +254,170 @@ describe("ChatView", () => {
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
     expect(datalistValues(input).filter((v) => v === "Hello").length).toBe(1);
+  });
+
+  describe("waiting messages", () => {
+    it("shows typing-indicator when a waiting message arrives", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+    });
+
+    it("replaces the typing-indicator with the real reply when it arrives", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+      await deliver("Bob", "Here is my reply");
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+      expect(screen.getByText("Here is my reply")).toBeDefined();
+    });
+
+    it("duplicate waiting events produce only one indicator", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getAllByTestId("typing-indicator")).toHaveLength(1);
+      });
+    });
+
+    it("preserves prior messages after replacing the waiting slot", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      await deliver("Carol", "Hello everyone");
+      deliverWaiting("Bob");
+      await deliver("Bob", "Bob's reply");
+      expect(screen.getByText("Hello everyone")).toBeDefined();
+      expect(screen.getByText("Bob's reply")).toBeDefined();
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+    });
+
+    it("cancel message removes the typing-indicator", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+      deliverCancel("Bob");
+      await waitFor(() => {
+        expect(screen.queryByTestId("typing-indicator")).toBeNull();
+      });
+    });
+
+    it("cancel with no prior waiting slot is a no-op", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      await deliver("Carol", "A message");
+      deliverCancel("Bob");
+      // No crash and no changes to existing messages
+      expect(screen.getByText("A message")).toBeDefined();
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+    });
+
+    it("waiting slot appears after earlier messages in the list", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      await deliver("Carol", "First message");
+      deliverWaiting("Bob");
+      await waitFor(() => {
+        expect(screen.getByTestId("typing-indicator")).toBeDefined();
+      });
+      const bubbles = screen.getAllByTestId("message-bubble");
+      expect(bubbles.length).toBe(2);
+      // First bubble contains the earlier message, second contains the indicator
+      expect(bubbles[0].textContent).toContain("First message");
+      expect(bubbles[1].querySelector("[data-testid='typing-indicator']")).toBeDefined();
+    });
+  });
+
+  describe("human typing indicator", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("calls publishWaiting after the first keystroke", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      expect(mockPublishWaiting).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not call publishWaiting again on subsequent keystrokes", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      fireEvent.change(input, { target: { value: "He" } });
+      fireEvent.change(input, { target: { value: "Hel" } });
+      expect(mockPublishWaiting).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls publishCancel after 3000 ms of idle", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      vi.useFakeTimers();
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      expect(mockPublishCancel).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(mockPublishCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears the debounce timer and does not call publishCancel when message is sent", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      vi.useFakeTimers();
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "Hello" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(mockPublishCancel).not.toHaveBeenCalled();
+    });
+
+    it("does not show own typing indicator locally after a keystroke", async () => {
+      render(<ChatView name="Alice" topic="chat" client={mockClient} />);
+      await waitFor(() => {
+        expect(mockConnect).toHaveBeenCalled();
+      });
+      const input = getInput();
+      fireEvent.change(input, { target: { value: "H" } });
+      // publishWaiting is fire-and-forget; no waiting message enters the local list
+      expect(screen.queryByTestId("typing-indicator")).toBeNull();
+    });
   });
 });

@@ -59,6 +59,7 @@ export function useBotSession(session: BotHistoryEntry, client?: NatsClient): Bo
       setHistory(updatedHistory);
 
       setThinking(true);
+      clientRef.current?.publishWaiting();
       try {
         const response = await fetch(PROXY_URL, {
           method: "POST",
@@ -73,6 +74,7 @@ export function useBotSession(session: BotHistoryEntry, client?: NatsClient): Bo
         const data = (await response.json()) as { reply?: string; error?: string };
 
         if (!response.ok) {
+          clientRef.current?.publishCancel();
           setError(data.error ?? `Request failed with status ${response.status.toString()}`);
           return;
         }
@@ -87,6 +89,7 @@ export function useBotSession(session: BotHistoryEntry, client?: NatsClient): Bo
         historyRef.current = withReply;
         setHistory(withReply);
       } catch (err) {
+        clientRef.current?.publishCancel();
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setThinking(false);

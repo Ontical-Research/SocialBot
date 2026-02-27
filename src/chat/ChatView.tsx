@@ -41,14 +41,34 @@ function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef(0);
   const clientRef = useRef<NatsClient | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nextId = () => {
     counterRef.current += 1;
     return `msg-${counterRef.current.toString()}`;
   };
 
-  const appendMessage = useCallback((msg: NatsMessage) => {
-    setMessages((prev) => [...prev, { ...msg, id: nextId() }]);
+  const handleIncomingMessage = useCallback((msg: NatsMessage) => {
+    const waitingId = `waiting-${msg.sender}`;
+    if (msg.type === "waiting") {
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === waitingId);
+        if (exists) return prev;
+        return [...prev, { ...msg, id: waitingId }];
+      });
+    } else if (msg.type === "cancel") {
+      setMessages((prev) => prev.filter((m) => m.id !== waitingId));
+    } else {
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.id === waitingId);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = { ...msg, id: waitingId };
+          return updated;
+        }
+        return [...prev, { ...msg, id: nextId() }];
+      });
+    }
   }, []);
 
   // Set page title to topic.name when this tab is active
@@ -68,23 +88,27 @@ function ChatView({
     if (client) {
       activeClient = client;
       clientRef.current = activeClient;
-      void activeClient.connect(natsUrl, topic, name, appendMessage);
+      void activeClient.connect(natsUrl, topic, name, handleIncomingMessage);
     } else {
       void import("../nats/NatsClient").then(({ NatsClient: NatsClientClass }) => {
         activeClient = new NatsClientClass();
         clientRef.current = activeClient;
-        void activeClient.connect(natsUrl, topic, name, appendMessage);
+        void activeClient.connect(natsUrl, topic, name, handleIncomingMessage);
       });
     }
 
     return () => {
       void clientRef.current?.disconnect();
     };
-  }, [name, topic, natsUrl, appendMessage, client]);
+  }, [name, topic, natsUrl, handleIncomingMessage, client]);
 
   function handleSend() {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (typingTimerRef.current !== null) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
     clientRef.current?.publish(trimmed);
     setSentHistory((prev) => {
       const filtered = prev.filter((m) => m !== trimmed);
@@ -141,7 +165,15 @@ function ChatView({
                     <span className="text-xs text-blue-200">{formatTime(msg.timestamp)}</span>
                   </div>
                 )}
-                <p className="text-sm">{msg.text}</p>
+                {msg.type === "waiting" ? (
+                  <div data-testid="typing-indicator" className="flex gap-1">
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:0ms] dark:bg-gray-400" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:150ms] dark:bg-gray-400" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:300ms] dark:bg-gray-400" />
+                  </div>
+                ) : (
+                  <p className="text-sm">{msg.text}</p>
+                )}
               </div>
             </div>
           );
@@ -156,7 +188,21 @@ function ChatView({
             type="text"
             value={text}
             onChange={(e) => {
-              setText(e.target.value);
+              const prev = text;
+              const next = e.target.value;
+              setText(next);
+              if (next.length > 0) {
+                if (prev.length === 0) {
+                  clientRef.current?.publishWaiting();
+                }
+                if (typingTimerRef.current !== null) {
+                  clearTimeout(typingTimerRef.current);
+                }
+                typingTimerRef.current = setTimeout(() => {
+                  typingTimerRef.current = null;
+                  clientRef.current?.publishCancel();
+                }, 3000);
+              }
             }}
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
