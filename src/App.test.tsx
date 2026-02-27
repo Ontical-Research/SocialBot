@@ -3,6 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "./App";
 
+vi.mock("./nats/client", () => ({
+  connect: vi.fn().mockResolvedValue(undefined),
+  publish: vi.fn(),
+  disconnect: vi.fn().mockResolvedValue(undefined),
+}));
+
 function mockFetch(config = {}, models: string[] = []) {
   vi.stubGlobal(
     "fetch",
