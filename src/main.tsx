@@ -11,7 +11,7 @@ interface AppConfig {
 
 async function loadConfig(): Promise<AppConfig> {
   try {
-    const res = await fetch("/config.json");
+    const res = await fetch(import.meta.env.BASE_URL + "config.json");
     if (!res.ok) return {};
     return (await res.json()) as AppConfig;
   } catch {
