@@ -1,0 +1,44 @@
+name: Build and Deploy (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      preview:
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    name: ${{ inputs.preview && 'Build and Deploy Preview' || 'Build and Deploy to GitHub Pages' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: node scripts/generate-config.js demo-pages.yaml
+      - run: npm run build
+        env:
+          VITE_BASE_URL: /SocialBot/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4
+        with:
+          preview: ${{ inputs.preview }}
