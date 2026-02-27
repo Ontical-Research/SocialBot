@@ -65,6 +65,13 @@ export default defineConfig([
   {
     files: ["src/**/*.test.{ts,tsx}"],
     plugins: { vitest },
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: "./tsconfig.test.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       ...vitest.configs.recommended.rules,
       // Type assertions are unavoidable when using testing-library
