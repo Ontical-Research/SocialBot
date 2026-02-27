@@ -19,7 +19,7 @@
  * @returns {{ natsUrl: string, agents: import('./parseConfig').UnifiedEntry[] }}
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
@@ -61,4 +61,16 @@ export function parseConfig(args) {
   });
 
   return { natsUrl, agents };
+}
+
+/**
+ * Write the resolved config to ``public/config.json``.
+ *
+ * @param {{ natsUrl: string, agents: object[] }} config
+ * @returns {string} Absolute path of the written file
+ */
+export function writePublicConfig(config) {
+  const configPath = resolve(projectRoot, "public", "config.json");
+  writeFileSync(configPath, JSON.stringify(config) + "\n", "utf-8");
+  return configPath;
 }

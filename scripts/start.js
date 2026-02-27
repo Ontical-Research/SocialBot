@@ -12,21 +12,16 @@
  *   npm start -- demo.yaml                 # launch Alice + Bob demo
  */
 
-import { writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { parseConfig } from "./parseConfig.js";
+import { parseConfig, writePublicConfig } from "./parseConfig.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "..");
 
-const { natsUrl, agents } = parseConfig(process.argv.slice(2));
-
-const config = { natsUrl, agents };
-const configPath = resolve(projectRoot, "public", "config.json");
-
-writeFileSync(configPath, JSON.stringify(config) + "\n", "utf-8");
+const config = parseConfig(process.argv.slice(2));
+const configPath = writePublicConfig(config);
 console.log(`[start] Wrote ${configPath}:`, JSON.stringify(config));
 
 // Start the Express proxy server
