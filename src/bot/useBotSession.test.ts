@@ -134,7 +134,7 @@ describe("useBotSession", () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toBe("http://localhost:3001/api/chat");
+    expect(url).toBe("/api/chat");
     expect(options.method).toBe("POST");
 
     const body = JSON.parse(options.body as string);

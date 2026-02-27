@@ -29,7 +29,7 @@ console.log(`[start] Wrote ${configPath}:`, config);
 
 // Spawn vite dev — prefer local binary, fall back to npx
 const viteBin = resolve(projectRoot, "node_modules", ".bin", "vite");
-const child = spawn(viteBin, ["dev"], {
+const child = spawn(viteBin, [], {
   cwd: projectRoot,
   stdio: "inherit",
   shell: false,
@@ -38,7 +38,7 @@ const child = spawn(viteBin, ["dev"], {
 child.on("error", (err) => {
   // If local binary not found, retry with npx
   if (err.code === "ENOENT") {
-    const fallback = spawn("npx", ["vite", "dev"], {
+    const fallback = spawn("npx", ["vite"], {
       cwd: projectRoot,
       stdio: "inherit",
       shell: false,
