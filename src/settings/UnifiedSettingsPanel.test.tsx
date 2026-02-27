@@ -100,9 +100,9 @@ describe("UnifiedSettingsPanel — rendering", () => {
     expect(screen.getByLabelText(/prompt/i)).toBeDefined();
   });
 
-  it("renders a Connect button", () => {
+  it("renders a Connect button", async () => {
     render(<UnifiedSettingsPanel onConnect={() => {}} />);
-    expect(screen.getByRole("button", { name: /connect/i })).toBeDefined();
+    expect(await screen.findByRole("button", { name: /connect/i })).toBeDefined();
   });
 
   it("Model select has 'None' as first option", async () => {
@@ -132,8 +132,9 @@ describe("UnifiedSettingsPanel — server models", () => {
 });
 
 describe("UnifiedSettingsPanel — Connect button state", () => {
-  it("Connect is disabled when name or topic is empty", () => {
+  it("Connect is disabled when name or topic is empty", async () => {
     render(<UnifiedSettingsPanel onConnect={() => {}} />);
+    await screen.findByLabelText(/model/i);
     expect(getButton(/connect/i).disabled).toBe(true);
   });
 
