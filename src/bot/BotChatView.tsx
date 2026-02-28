@@ -39,10 +39,10 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
   const promptFilename = basename(session.promptPath);
 
   return (
-    <main className="flex h-full flex-col bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary">
+    <main className="bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary flex h-full flex-col">
       {/* Status bar */}
-      <header className="flex items-center gap-3 border-b border-border px-6 py-3 dark:border-dark-border">
-        <span className="rounded-md bg-surface-secondary px-2.5 py-1 text-xs font-medium text-text-secondary dark:bg-dark-surface-secondary dark:text-dark-text-secondary">
+      <header className="border-border dark:border-dark-border flex items-center gap-3 border-b px-6 py-3">
+        <span className="bg-surface-secondary text-text-secondary dark:bg-dark-surface-secondary dark:text-dark-text-secondary rounded-md px-2.5 py-1 text-xs font-medium">
           {session.model}
         </span>
         <span className="text-border dark:text-dark-border">|</span>
@@ -50,7 +50,7 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
           onClick={() => {
             setPromptModalOpen(true);
           }}
-          className="text-sm text-accent hover:underline focus:outline-none dark:text-dark-accent"
+          className="text-accent dark:text-dark-accent text-sm hover:underline focus:outline-none"
         >
           {promptFilename}
         </button>
@@ -60,12 +60,12 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-3 border-b border-danger/30 bg-danger-subtle px-6 py-2.5 text-sm text-danger dark:border-dark-danger/30 dark:bg-dark-danger-subtle dark:text-dark-danger"
+          className="border-danger/30 bg-danger-subtle text-danger dark:border-dark-danger/30 dark:bg-dark-danger-subtle dark:text-dark-danger flex items-center gap-3 border-b px-6 py-2.5 text-sm"
         >
           <span className="flex-1">{error}</span>
           <button
             onClick={onLeave}
-            className="rounded-lg border border-danger/40 px-3 py-1 text-xs font-medium transition-colors hover:bg-danger/10 dark:border-dark-danger/40 dark:hover:bg-dark-danger/10"
+            className="border-danger/40 hover:bg-danger/10 dark:border-dark-danger/40 dark:hover:bg-dark-danger/10 rounded-lg border px-3 py-1 text-xs font-medium transition-colors"
           >
             Back to login
           </button>
@@ -87,7 +87,7 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
               <div
                 className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                   isSelf
-                    ? "bg-accent text-white dark:bg-dark-accent dark:text-white"
+                    ? "bg-accent dark:bg-dark-accent text-white dark:text-white"
                     : "bg-surface-secondary text-text-primary dark:bg-dark-surface-secondary dark:text-dark-text-primary"
                 }`}
               >
@@ -107,11 +107,11 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
         {/* Typing indicator */}
         {thinking && (
           <div data-testid="typing-indicator" className="mb-4 flex justify-start">
-            <div className="rounded-2xl bg-surface-secondary px-4 py-3 dark:bg-dark-surface-secondary">
+            <div className="bg-surface-secondary dark:bg-dark-surface-secondary rounded-2xl px-4 py-3">
               <div className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:0ms] dark:bg-dark-text-tertiary" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:150ms] dark:bg-dark-text-tertiary" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:300ms] dark:bg-dark-text-tertiary" />
+                <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:0ms]" />
+                <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:150ms]" />
+                <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -131,13 +131,13 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
           }}
         >
           <div
-            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl dark:border-dark-border dark:bg-dark-surface-secondary"
+            className="border-border bg-surface dark:border-dark-border dark:bg-dark-surface-secondary max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl border p-6 shadow-2xl"
             onClick={(e) => {
               e.stopPropagation();
             }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-text-primary dark:text-dark-text-primary">
+              <h2 className="text-text-primary dark:text-dark-text-primary text-sm font-semibold">
                 {promptFilename}
               </h2>
               <button
@@ -145,15 +145,24 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
                   setPromptModalOpen(false);
                 }}
                 aria-label="Close"
-                className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary"
+                className="text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary rounded-lg p-1.5 transition-colors"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
-            <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-text-secondary dark:text-dark-text-secondary">
+            <pre className="text-text-secondary dark:text-dark-text-secondary font-mono text-sm leading-relaxed whitespace-pre-wrap">
               {session.promptContent}
             </pre>
           </div>

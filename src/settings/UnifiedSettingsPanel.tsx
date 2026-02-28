@@ -107,16 +107,16 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
     "w-full appearance-none rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary transition-colors focus:border-accent focus:outline-none dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-primary dark:focus:border-dark-accent";
 
   return (
-    <main className="flex h-full flex-col items-center justify-center overflow-y-auto bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary">
+    <main className="bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary flex h-full flex-col items-center justify-center overflow-y-auto">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-lg font-bold text-white dark:bg-dark-accent">
+          <div className="bg-accent dark:bg-dark-accent mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-bold text-white">
             S
           </div>
-          <h1 className="text-xl font-semibold tracking-tight text-text-primary dark:text-dark-text-primary">
+          <h1 className="text-text-primary dark:text-dark-text-primary text-xl font-semibold tracking-tight">
             Join a chat room
           </h1>
-          <p className="mt-1 text-sm text-text-secondary dark:text-dark-text-secondary">
+          <p className="text-text-secondary dark:text-dark-text-secondary mt-1 text-sm">
             Enter your details to connect
           </p>
         </div>
@@ -126,7 +126,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-name-input"
-              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
+              className="text-text-secondary dark:text-dark-text-secondary text-xs font-medium tracking-wide uppercase"
             >
               Name
             </label>
@@ -149,7 +149,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
               ))}
             </datalist>
             {isNameTaken && (
-              <p className="text-xs text-danger dark:text-dark-danger">
+              <p className="text-danger dark:text-dark-danger text-xs">
                 Name &ldquo;{name}&rdquo; is already in use.
               </p>
             )}
@@ -159,7 +159,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-topic-input"
-              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
+              className="text-text-secondary dark:text-dark-text-secondary text-xs font-medium tracking-wide uppercase"
             >
               Topic
             </label>
@@ -187,7 +187,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-model-select"
-              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
+              className="text-text-secondary dark:text-dark-text-secondary text-xs font-medium tracking-wide uppercase"
             >
               Model
             </label>
@@ -210,7 +210,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="unified-prompt-select"
-              className="text-xs font-medium tracking-wide text-text-secondary uppercase dark:text-dark-text-secondary"
+              className="text-text-secondary dark:text-dark-text-secondary text-xs font-medium tracking-wide uppercase"
             >
               Prompt
             </label>
@@ -247,7 +247,7 @@ function UnifiedSettingsPanel({ onConnect, takenNames = [] }: UnifiedSettingsPan
           <button
             type="submit"
             disabled={!canConnect}
-            className="mt-1 w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus:ring-2 focus:ring-accent/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-dark-accent/30"
+            className="bg-accent hover:bg-accent-hover focus:ring-accent/30 dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-dark-accent/30 mt-1 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
           >
             Connect
           </button>

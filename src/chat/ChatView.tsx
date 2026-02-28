@@ -121,7 +121,7 @@ function ChatView({
   }
 
   return (
-    <main className="flex h-full flex-col bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary">
+    <main className="bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary flex h-full flex-col">
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {messages.map((msg) => {
@@ -136,7 +136,7 @@ function ChatView({
               <div
                 className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                   isSelf
-                    ? "bg-accent text-white dark:bg-dark-accent dark:text-white"
+                    ? "bg-accent dark:bg-dark-accent text-white dark:text-white"
                     : "bg-surface-secondary text-text-primary dark:bg-dark-surface-secondary dark:text-dark-text-primary"
                 }`}
               >
@@ -145,7 +145,7 @@ function ChatView({
                     <span className={`text-xs font-semibold ${senderColor(msg.sender)}`}>
                       {msg.sender}
                     </span>
-                    <span className="text-xs text-text-tertiary dark:text-dark-text-tertiary">
+                    <span className="text-text-tertiary dark:text-dark-text-tertiary text-xs">
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
@@ -157,9 +157,9 @@ function ChatView({
                 )}
                 {msg.type === "waiting" ? (
                   <div data-testid="typing-indicator" className="flex items-center gap-1 py-0.5">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:0ms] dark:bg-dark-text-tertiary" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:150ms] dark:bg-dark-text-tertiary" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-tertiary [animation-delay:300ms] dark:bg-dark-text-tertiary" />
+                    <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:0ms]" />
+                    <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:150ms]" />
+                    <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:300ms]" />
                   </div>
                 ) : (
                   <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -172,7 +172,7 @@ function ChatView({
       </div>
 
       {/* Send form */}
-      <div className="border-t border-border px-6 py-4 dark:border-dark-border">
+      <div className="border-border dark:border-dark-border border-t px-6 py-4">
         <div className="flex items-center gap-3">
           <input
             type="text"
@@ -197,7 +197,7 @@ function ChatView({
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             list="sent-history"
-            className="flex-1 rounded-xl border border-border bg-surface-secondary px-4 py-2.5 text-sm text-text-primary placeholder-text-tertiary transition-colors focus:border-accent focus:outline-none dark:border-dark-border dark:bg-dark-surface-secondary dark:text-dark-text-primary dark:placeholder-dark-text-tertiary dark:focus:border-dark-accent"
+            className="border-border bg-surface-secondary text-text-primary placeholder-text-tertiary focus:border-accent dark:border-dark-border dark:bg-dark-surface-secondary dark:text-dark-text-primary dark:placeholder-dark-text-tertiary dark:focus:border-dark-accent flex-1 rounded-xl border px-4 py-2.5 text-sm transition-colors focus:outline-none"
           />
           <datalist id="sent-history">
             {sentHistory.map((msg) => (
@@ -207,7 +207,7 @@ function ChatView({
           <button
             onClick={handleSend}
             aria-label="Send"
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-accent text-white transition-colors hover:bg-accent-hover focus:ring-2 focus:ring-accent/30 focus:outline-none dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-dark-accent/30"
+            className="bg-accent hover:bg-accent-hover focus:ring-accent/30 dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-dark-accent/30 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white transition-colors focus:ring-2 focus:outline-none"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
