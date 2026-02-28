@@ -109,18 +109,18 @@ function App({ initialAgents }: AppProps) {
   }
 
   return (
-    <div className="flex h-screen bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary">
+    <div className="bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary flex h-screen">
       {/* Sidebar */}
       <nav
-        className="flex w-56 flex-shrink-0 flex-col border-r border-border bg-surface-secondary dark:border-dark-border dark:bg-dark-surface-secondary"
+        className="border-border bg-surface-secondary dark:border-dark-border dark:bg-dark-surface-secondary flex w-56 flex-shrink-0 flex-col border-r"
         aria-label="Agent tabs"
       >
         {/* Brand header */}
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-4 dark:border-dark-border">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white dark:bg-dark-accent">
+        <div className="border-border dark:border-dark-border flex items-center gap-2.5 border-b px-4 py-4">
+          <div className="bg-accent dark:bg-dark-accent flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white">
             S
           </div>
-          <span className="text-sm font-semibold tracking-tight text-text-primary dark:text-dark-text-primary">
+          <span className="text-text-primary dark:text-dark-text-primary text-sm font-semibold tracking-tight">
             SocialBot
           </span>
         </div>
@@ -133,13 +133,14 @@ function App({ initialAgents }: AppProps) {
             return (
               <div key={tab.id} className="group relative">
                 <button
+                  aria-label={tabLabel(tab)}
                   onClick={() => {
                     setActiveTabId(tab.id);
                     setConfirmRemoveId(null);
                   }}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                     isActive
-                      ? "bg-accent-subtle font-medium text-accent dark:bg-dark-accent-subtle dark:text-dark-accent"
+                      ? "bg-accent-subtle text-accent dark:bg-dark-accent-subtle dark:text-dark-accent font-medium"
                       : "text-text-secondary hover:bg-surface-tertiary dark:text-dark-text-secondary dark:hover:bg-dark-surface-tertiary"
                   }`}
                 >
@@ -156,8 +157,8 @@ function App({ initialAgents }: AppProps) {
                 </button>
 
                 {isConfirming ? (
-                  <div className="flex items-center justify-between rounded-lg bg-danger-subtle px-3 py-1.5 dark:bg-dark-danger-subtle">
-                    <span className="text-xs font-medium text-danger dark:text-dark-danger">
+                  <div className="bg-danger-subtle dark:bg-dark-danger-subtle flex items-center justify-between rounded-lg px-3 py-1.5">
+                    <span className="text-danger dark:text-dark-danger text-xs font-medium">
                       Remove?
                     </span>
                     <div className="flex gap-2">
@@ -165,36 +166,45 @@ function App({ initialAgents }: AppProps) {
                         onClick={() => {
                           void confirmRemoveTab(tab.id);
                         }}
-                        className="text-xs font-medium text-danger hover:underline dark:text-dark-danger"
+                        className="text-danger dark:text-dark-danger text-xs font-medium hover:underline"
                       >
                         Yes
                       </button>
                       <button
                         onClick={cancelRemoveTab}
-                        className="text-xs text-text-secondary hover:underline dark:text-dark-text-secondary"
+                        className="text-text-secondary dark:text-dark-text-secondary text-xs hover:underline"
                       >
                         No
                       </button>
                     </div>
                   </div>
                 ) : (
-                    <button
-                      onClick={() => {
-                        requestRemoveTab(tab.id);
-                      }}
-                      disabled={tabs.length <= 1}
-                      aria-label="Remove tab"
-                      className={`absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-0.5 text-text-tertiary transition-opacity hover:text-danger dark:text-dark-text-tertiary dark:hover:text-dark-danger ${
-                        tabs.length <= 1
-                          ? "cursor-not-allowed opacity-0"
-                          : "opacity-0 group-hover:opacity-100"
-                      }`}
+                  <button
+                    onClick={() => {
+                      requestRemoveTab(tab.id);
+                    }}
+                    disabled={tabs.length <= 1}
+                    aria-label="Remove tab"
+                    className={`text-text-tertiary hover:text-danger dark:text-dark-text-tertiary dark:hover:text-dark-danger absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-0.5 transition-opacity ${
+                      tabs.length <= 1
+                        ? "cursor-not-allowed opacity-0"
+                        : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
                 )}
               </div>
             );
@@ -202,10 +212,10 @@ function App({ initialAgents }: AppProps) {
         </div>
 
         {/* Sidebar footer */}
-        <div className="flex flex-col gap-1 border-t border-border px-2 py-3 dark:border-dark-border">
+        <div className="border-border dark:border-dark-border flex flex-col gap-1 border-t px-2 py-3">
           {sharedTopic && (
             <div
-              className="truncate rounded-md bg-success/10 px-2.5 py-1 text-center font-mono text-xs text-success dark:bg-dark-success/10 dark:text-dark-success"
+              className="bg-success/10 text-success dark:bg-dark-success/10 dark:text-dark-success truncate rounded-md px-2.5 py-1 text-center font-mono text-xs"
               title={sharedTopic}
             >
               {sharedTopic}
@@ -215,10 +225,19 @@ function App({ initialAgents }: AppProps) {
             <button
               onClick={toggle}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="flex flex-1 items-center justify-center rounded-lg py-2 text-text-tertiary transition-colors hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary"
+              className="text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary flex flex-1 items-center justify-center rounded-lg py-2 transition-colors"
             >
               {isDark ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="5" />
                   <line x1="12" y1="1" x2="12" y2="3" />
                   <line x1="12" y1="21" x2="12" y2="23" />
@@ -230,7 +249,16 @@ function App({ initialAgents }: AppProps) {
                   <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
               )}
@@ -238,9 +266,18 @@ function App({ initialAgents }: AppProps) {
             <button
               onClick={addTab}
               aria-label="Add new agent tab"
-              className="flex flex-1 items-center justify-center rounded-lg py-2 text-text-tertiary transition-colors hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary"
+              className="text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary flex flex-1 items-center justify-center rounded-lg py-2 transition-colors"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
