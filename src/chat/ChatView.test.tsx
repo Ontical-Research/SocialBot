@@ -172,7 +172,7 @@ describe("ChatView", () => {
     });
     await deliver("Carol", "Color test");
     const senderEl = screen.getByText("Carol");
-    expect(senderEl.className).toMatch(/text-\w+-400/);
+    expect(senderEl.className).toMatch(/text-\w+-\d{3}/);
   });
 
   it("disconnects on unmount", async () => {

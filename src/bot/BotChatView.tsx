@@ -39,18 +39,18 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
   const promptFilename = basename(session.promptPath);
 
   return (
-    <main className="flex h-full flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
+    <main className="bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary flex h-full flex-col">
       {/* Status bar */}
-      <header className="flex items-center gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+      <header className="border-border dark:border-dark-border flex items-center gap-3 border-b px-6 py-3">
+        <span className="bg-surface-secondary text-text-secondary dark:bg-dark-surface-secondary dark:text-dark-text-secondary rounded-md px-2.5 py-1 text-xs font-medium">
           {session.model}
         </span>
-        <span className="text-gray-500">·</span>
+        <span className="text-border dark:text-dark-border">|</span>
         <button
           onClick={() => {
             setPromptModalOpen(true);
           }}
-          className="text-sm text-blue-400 hover:text-blue-300 hover:underline focus:outline-none"
+          className="text-accent dark:text-dark-accent text-sm hover:underline focus:outline-none"
         >
           {promptFilename}
         </button>
@@ -60,12 +60,12 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
       {error && (
         <div
           role="alert"
-          className="flex items-center gap-3 border-b border-red-300 bg-red-100 px-4 py-2 text-sm text-red-600 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+          className="border-danger/30 bg-danger-subtle text-danger dark:border-dark-danger/30 dark:bg-dark-danger-subtle dark:text-dark-danger flex items-center gap-3 border-b px-6 py-2.5 text-sm"
         >
           <span className="flex-1">{error}</span>
           <button
             onClick={onLeave}
-            className="rounded border border-red-400 px-2 py-1 text-xs hover:bg-red-200 dark:border-red-600 dark:hover:bg-red-900/50"
+            className="border-danger/40 hover:bg-danger/10 dark:border-dark-danger/40 dark:hover:bg-dark-danger/10 rounded-lg border px-3 py-1 text-xs font-medium transition-colors"
           >
             Back to login
           </button>
@@ -73,32 +73,32 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
       )}
 
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         {history.map((msg, index) => {
           const isSelf = msg.role === "assistant";
           const senderName = isSelf ? session.name : (msg.name ?? "Unknown");
           return (
             <div
               key={index}
-              className={`mb-3 flex ${isSelf ? "justify-end" : "justify-start"}`}
+              className={`mb-4 flex ${isSelf ? "justify-end" : "justify-start"}`}
               data-testid="message-bubble"
               data-sender={isSelf ? "self" : "other"}
             >
               <div
-                className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                   isSelf
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+                    ? "bg-accent dark:bg-dark-accent text-white dark:text-white"
+                    : "bg-surface-secondary text-text-primary dark:bg-dark-surface-secondary dark:text-dark-text-primary"
                 }`}
               >
                 {!isSelf && (
                   <div className="mb-1 flex items-baseline gap-2">
-                    <span className={`text-sm font-semibold ${senderColor(senderName)}`}>
+                    <span className={`text-xs font-semibold ${senderColor(senderName)}`}>
                       {senderName}
                     </span>
                   </div>
                 )}
-                <p className="text-sm">{msg.content}</p>
+                <p className="text-sm leading-relaxed">{msg.content}</p>
               </div>
             </div>
           );
@@ -106,12 +106,12 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
 
         {/* Typing indicator */}
         {thinking && (
-          <div data-testid="typing-indicator" className="mb-3 flex justify-start">
-            <div className="rounded-2xl bg-gray-200 px-4 py-3 dark:bg-gray-700">
-              <div className="flex gap-1">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:0ms] dark:bg-gray-400" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:150ms] dark:bg-gray-400" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:300ms] dark:bg-gray-400" />
+          <div data-testid="typing-indicator" className="mb-4 flex justify-start">
+            <div className="bg-surface-secondary dark:bg-dark-surface-secondary rounded-2xl px-4 py-3">
+              <div className="flex items-center gap-1">
+                <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:0ms]" />
+                <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:150ms]" />
+                <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -125,19 +125,19 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           onClick={() => {
             setPromptModalOpen(false);
           }}
         >
           <div
-            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800"
+            className="border-border bg-surface dark:border-dark-border dark:bg-dark-surface-secondary max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl border p-6 shadow-2xl"
             onClick={(e) => {
               e.stopPropagation();
             }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
+              <h2 className="text-text-primary dark:text-dark-text-primary text-sm font-semibold">
                 {promptFilename}
               </h2>
               <button
@@ -145,12 +145,24 @@ function BotChatView({ session, onLeave, client }: BotChatViewProps) {
                   setPromptModalOpen(false);
                 }}
                 aria-label="Close"
-                className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                className="text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary dark:text-dark-text-tertiary dark:hover:bg-dark-surface-tertiary dark:hover:text-dark-text-primary rounded-lg p-1.5 transition-colors"
               >
-                ✕
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
-            <pre className="font-mono text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+            <pre className="text-text-secondary dark:text-dark-text-secondary font-mono text-sm leading-relaxed whitespace-pre-wrap">
               {session.promptContent}
             </pre>
           </div>

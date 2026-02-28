@@ -121,48 +121,48 @@ function ChatView({
   }
 
   return (
-    <main className="flex h-full flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
+    <main className="bg-surface text-text-primary dark:bg-dark-surface dark:text-dark-text-primary flex h-full flex-col">
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         {messages.map((msg) => {
           const isSelf = msg.sender === name;
           return (
             <div
               key={msg.id}
-              className={`mb-3 flex ${isSelf ? "justify-end" : "justify-start"}`}
+              className={`mb-4 flex ${isSelf ? "justify-end" : "justify-start"}`}
               data-testid="message-bubble"
               data-sender={isSelf ? "self" : "other"}
             >
               <div
-                className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                   isSelf
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+                    ? "bg-accent dark:bg-dark-accent text-white dark:text-white"
+                    : "bg-surface-secondary text-text-primary dark:bg-dark-surface-secondary dark:text-dark-text-primary"
                 }`}
               >
                 {!isSelf && (
                   <div className="mb-1 flex items-baseline gap-2">
-                    <span className={`text-sm font-semibold ${senderColor(msg.sender)}`}>
+                    <span className={`text-xs font-semibold ${senderColor(msg.sender)}`}>
                       {msg.sender}
                     </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-text-tertiary dark:text-dark-text-tertiary text-xs">
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
                 )}
                 {isSelf && (
-                  <div className="mb-1 flex items-baseline justify-end gap-2">
-                    <span className="text-xs text-blue-200">{formatTime(msg.timestamp)}</span>
+                  <div className="mb-0.5 flex items-baseline justify-end">
+                    <span className="text-xs text-white/60">{formatTime(msg.timestamp)}</span>
                   </div>
                 )}
                 {msg.type === "waiting" ? (
-                  <div data-testid="typing-indicator" className="flex gap-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:0ms] dark:bg-gray-400" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:150ms] dark:bg-gray-400" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:300ms] dark:bg-gray-400" />
+                  <div data-testid="typing-indicator" className="flex items-center gap-1 py-0.5">
+                    <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:0ms]" />
+                    <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:150ms]" />
+                    <span className="bg-text-tertiary dark:bg-dark-text-tertiary h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:300ms]" />
                   </div>
                 ) : (
-                  <p className="text-sm">{msg.text}</p>
+                  <p className="text-sm leading-relaxed">{msg.text}</p>
                 )}
               </div>
             </div>
@@ -172,8 +172,8 @@ function ChatView({
       </div>
 
       {/* Send form */}
-      <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
-        <div className="flex gap-2">
+      <div className="border-border dark:border-dark-border border-t px-6 py-4">
+        <div className="flex items-center gap-3">
           <input
             type="text"
             value={text}
@@ -195,9 +195,9 @@ function ChatView({
               }
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message…"
+            placeholder="Type a message..."
             list="sent-history"
-            className="flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+            className="border-border bg-surface-secondary text-text-primary placeholder-text-tertiary focus:border-accent dark:border-dark-border dark:bg-dark-surface-secondary dark:text-dark-text-primary dark:placeholder-dark-text-tertiary dark:focus:border-dark-accent flex-1 rounded-xl border px-4 py-2.5 text-sm transition-colors focus:outline-none"
           />
           <datalist id="sent-history">
             {sentHistory.map((msg) => (
@@ -207,17 +207,21 @@ function ChatView({
           <button
             onClick={handleSend}
             aria-label="Send"
-            className="flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="bg-accent hover:bg-accent-hover focus:ring-accent/30 dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-dark-accent/30 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white transition-colors focus:ring-2 focus:outline-none"
           >
-            {/* Right-pointing play triangle */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
               aria-hidden="true"
             >
-              <path d="M8 5v14l11-7z" />
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
           </button>
         </div>
